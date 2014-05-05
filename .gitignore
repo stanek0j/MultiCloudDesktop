@@ -4,3 +4,6 @@
 *.war
 *.ear
 /bin/
+/credentials.dat
+/accounts.json
+/abort.png
