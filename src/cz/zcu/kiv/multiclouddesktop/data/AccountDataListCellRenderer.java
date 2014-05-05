@@ -4,7 +4,6 @@ import java.awt.Component;
 import java.awt.Font;
 import java.awt.GridLayout;
 
-import javax.swing.DefaultListCellRenderer;
 import javax.swing.JLabel;
 import javax.swing.JList;
 import javax.swing.JPanel;
@@ -25,10 +24,16 @@ import cz.zcu.kiv.multicloud.utils.Utils.UnitsFormat;
  */
 public class AccountDataListCellRenderer implements ListCellRenderer<AccountData> {
 
-	private final DefaultListCellRenderer renderer = new DefaultListCellRenderer();
+	/** Font for displaying the title of the item. */
 	private final Font titleFont;
+	/** Font for displaying the rest of the text. */
 	private final Font normalFont;
 
+	/**
+	 * Ctor with necessary parameters.
+	 * @param titleFont Font for the title.
+	 * @param normalFont Font for the rest of the text.
+	 */
 	public AccountDataListCellRenderer(Font titleFont, Font normalFont) {
 		this.titleFont = titleFont;
 		this.normalFont = normalFont;
@@ -39,15 +44,27 @@ public class AccountDataListCellRenderer implements ListCellRenderer<AccountData
 	 */
 	@Override
 	public Component getListCellRendererComponent(JList<? extends AccountData> list, AccountData value, int index, boolean isSelected, boolean cellHasFocus) {
+		String total = "";
+		StringBuilder sb = new StringBuilder();
+		if (value.isAuthorized()) {
+			total = "Total space: " + Utils.formatSize(value.getTotalSpace(), UnitsFormat.BINARY);
+			sb.append("Free / Used: ");
+			sb.append(Utils.formatSize(value.getFreeSpace(), UnitsFormat.BINARY));
+			sb.append(" / ");
+			sb.append(Utils.formatSize(value.getUsedSpace(), UnitsFormat.BINARY));
+		}
 		JPanel cell = new JPanel();
 		JLabel cellTitle = new JLabel(value.getName());
 		JLabel cellCloud = new JLabel(value.getCloud());
-		JLabel cellSpace = new JLabel("Total: " + Utils.formatSize(value.getTotalSpace(), UnitsFormat.BINARY));
-		cell.setLayout(new GridLayout(3, 1));
+		JLabel cellTotal = new JLabel(total);
+		JLabel cellSpace = new JLabel(sb.toString());
+		cell.setLayout(new GridLayout(4, 1));
 		cellTitle.setBorder(new EmptyBorder(8, 8, 4, 8));
 		cellTitle.setFont(titleFont);
 		cellCloud.setBorder(new EmptyBorder(8, 8, 4, 8));
 		cellCloud.setFont(normalFont);
+		cellTotal.setBorder(new EmptyBorder(8, 8, 4, 8));
+		cellTotal.setFont(normalFont);
 		cellSpace.setBorder(new EmptyBorder(4, 8, 4, 8));
 		cellSpace.setFont(normalFont);
 		if (isSelected) {
@@ -55,22 +72,27 @@ public class AccountDataListCellRenderer implements ListCellRenderer<AccountData
 			cell.setForeground(list.getSelectionForeground());
 			cellTitle.setBackground(list.getSelectionBackground());
 			cellCloud.setBackground(list.getSelectionBackground());
+			cellTotal.setBackground(list.getSelectionBackground());
 			cellSpace.setBackground(list.getSelectionBackground());
 			cellTitle.setForeground(list.getSelectionForeground());
 			cellCloud.setForeground(list.getSelectionForeground());
+			cellTotal.setForeground(list.getSelectionForeground());
 			cellSpace.setForeground(list.getSelectionForeground());
 		} else {
 			cell.setBackground(list.getBackground());
 			cell.setForeground(list.getForeground());
 			cellTitle.setBackground(list.getBackground());
 			cellCloud.setBackground(list.getBackground());
+			cellTotal.setBackground(list.getBackground());
 			cellSpace.setBackground(list.getBackground());
 			cellTitle.setForeground(list.getForeground());
 			cellCloud.setForeground(list.getForeground());
+			cellTotal.setForeground(list.getForeground());
 			cellSpace.setForeground(list.getForeground());
 		}
 		cell.add(cellTitle);
 		cell.add(cellCloud);
+		cell.add(cellTotal);
 		cell.add(cellSpace);
 		return cell;
 	}

@@ -1,6 +1,7 @@
 package cz.zcu.kiv.multiclouddesktop;
 
 import java.awt.BorderLayout;
+import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.Font;
 import java.awt.Insets;
@@ -28,9 +29,19 @@ import javax.swing.UIManager;
 import javax.swing.UnsupportedLookAndFeelException;
 import javax.swing.border.EmptyBorder;
 
+import cz.zcu.kiv.multicloud.MultiCloud;
+import cz.zcu.kiv.multicloud.MultiCloudException;
+import cz.zcu.kiv.multicloud.json.AccountSettings;
 import cz.zcu.kiv.multicloud.json.FileInfo;
+import cz.zcu.kiv.multicloud.oauth2.OAuth2SettingsException;
+import cz.zcu.kiv.multicloud.utils.AccountManager;
+import cz.zcu.kiv.multicloud.utils.CloudManager;
 import cz.zcu.kiv.multiclouddesktop.data.AccountData;
 import cz.zcu.kiv.multiclouddesktop.data.AccountDataListCellRenderer;
+import cz.zcu.kiv.multiclouddesktop.dialog.AccountDialog;
+import cz.zcu.kiv.multiclouddesktop.dialog.AuthorizeDialog;
+import cz.zcu.kiv.multiclouddesktop.dialog.DialogProgressListener;
+import cz.zcu.kiv.multiclouddesktop.dialog.ProgressDialog;
 
 public class MultiCloudDesktop extends JFrame {
 
@@ -59,6 +70,45 @@ public class MultiCloudDesktop extends JFrame {
 		});
 	}
 
+	private final JPanel accountsPanel;
+	private final JScrollPane accountScrollPane;
+	private final DefaultListModel<AccountData> accountModel;
+	private final JList<AccountData> accountList;
+	private final AccountDataListCellRenderer accountRenderer;
+	private final JPanel contentPanel;
+	private final JScrollPane dataScrollPane;
+	private final JList<FileInfo> dataList;
+	private final JPanel statusPanel;
+	private final JLabel lblStatus;
+	private final JPanel progressPanel;
+	private final JProgressBar progressBar;
+
+	private final JMenuBar menuBar;
+	private final JMenu mnFile;
+	private final JMenuItem mntmPreferences;
+	private final JMenuItem mntmExit;
+	private final JMenu mnAccount;
+	private final JMenuItem mntmAddAccount;
+	private final JMenuItem mntmAuthorize;
+	private final JMenuItem mntmInformation;
+	private final JMenuItem mntmQuota;
+	private final JMenuItem mntmRenameAccount;
+	private final JMenuItem mntmRemoveAccount;
+	private final JMenu mnOperation;
+	private final JMenuItem mntmUpload;
+	private final JMenuItem mntmDownload;
+	private final JMenuItem mntmMultiDownload;
+	private final JMenuItem mntmCreateFolder;
+	private final JMenuItem mntmRename;
+	private final JMenuItem mntmMove;
+	private final JMenuItem mntmCopy;
+	private final JMenuItem mntmDelete;
+
+	private final MultiCloud cloud;
+	private final AccountManager accountManager;
+	private final CloudManager cloudManager;
+	private final DialogProgressListener progressListener;
+
 	public MultiCloudDesktop() {
 		setMinimumSize(new Dimension(720, 480));
 		setPreferredSize(new Dimension(720, 480));
@@ -67,46 +117,52 @@ public class MultiCloudDesktop extends JFrame {
 		setLocationByPlatform(true);
 		setTitle(APP_NAME);
 
-		JPanel accountsPanel = new JPanel();
+		cloud = new MultiCloud();
+		progressListener = new DialogProgressListener(200);
+		cloud.setListener(progressListener);
+		accountManager = cloud.getSettings().getAccountManager();
+		cloudManager = cloud.getSettings().getCloudManager();
+		cloud.validateAccounts();
+
+		accountsPanel = new JPanel();
 		getContentPane().add(accountsPanel, BorderLayout.WEST);
 		accountsPanel.setLayout(new BorderLayout(0, 0));
 
-		JScrollPane accountScrollPane = new JScrollPane();
+		accountScrollPane = new JScrollPane();
 		accountScrollPane.setVerticalScrollBarPolicy(ScrollPaneConstants.VERTICAL_SCROLLBAR_ALWAYS);
 		accountsPanel.add(accountScrollPane);
 
-		AccountData data = new AccountData();
-		data.setName("TEST");
-		data.setCloud("Dropbox");
-		data.setTotalSpace(1234567890L);
-		data.setFreeSpace(123456L);
-		data.setUsedSpace(1234444434L);
-		DefaultListModel<AccountData> accountModel = new DefaultListModel<>();
-		accountModel.addElement(data);
-
-		JList<AccountData> accountList = new JList<>();
-		AccountDataListCellRenderer renderer = new AccountDataListCellRenderer(accountList.getFont().deriveFont(Font.BOLD, 14.0f), accountList.getFont());
+		accountModel = new DefaultListModel<>();
+		for (AccountSettings account: accountManager.getAllAccountSettings()) {
+			AccountData data = new AccountData();
+			data.setName(account.getAccountId());
+			data.setCloud(account.getSettingsId());
+			data.setAuthorized(account.isAuthorized());
+			accountModel.addElement(data);
+		}
+		accountList = new JList<>();
+		accountRenderer = new AccountDataListCellRenderer(accountList.getFont().deriveFont(Font.BOLD, 14.0f), accountList.getFont());
 		accountList.setVisibleRowCount(-1);
 		accountScrollPane.setViewportView(accountList);
-		accountList.setCellRenderer(renderer);
+		accountList.setCellRenderer(accountRenderer);
 		accountList.setFixedCellWidth(200);
-		accountList.setFixedCellHeight(56);
+		accountList.setFixedCellHeight(68);
 		accountList.setModel(accountModel);
 		accountList.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
 
-		JPanel contentPanel = new JPanel();
+		contentPanel = new JPanel();
 		getContentPane().add(contentPanel, BorderLayout.CENTER);
 		contentPanel.setLayout(new BorderLayout(0, 0));
 
-		JScrollPane dataScrollPane = new JScrollPane();
+		dataScrollPane = new JScrollPane();
 		contentPanel.add(dataScrollPane, BorderLayout.CENTER);
 
-		JList<FileInfo> dataList = new JList<>();
+		dataList = new JList<>();
 		dataList.setLayoutOrientation(JList.HORIZONTAL_WRAP);
 		dataList.setVisibleRowCount(-1);
 		dataScrollPane.setViewportView(dataList);
 
-		JPanel statusPanel = new JPanel();
+		statusPanel = new JPanel();
 		statusPanel.setMaximumSize(new Dimension(32767, 25));
 		statusPanel.setBorder(null);
 		statusPanel.setPreferredSize(new Dimension(10, 25));
@@ -114,70 +170,154 @@ public class MultiCloudDesktop extends JFrame {
 		getContentPane().add(statusPanel, BorderLayout.SOUTH);
 		statusPanel.setLayout(new BorderLayout(0, 0));
 
-		JLabel lblStatus = new JLabel("Status");
+		lblStatus = new JLabel();
 		lblStatus.setBorder(new EmptyBorder(4, 8, 4, 8));
 		statusPanel.add(lblStatus, BorderLayout.CENTER);
 
-		JPanel progressPanel = new JPanel();
+		progressPanel = new JPanel();
 		statusPanel.add(progressPanel, BorderLayout.EAST);
 
-		JProgressBar progressBar = new JProgressBar();
-		progressBar.setPreferredSize(new Dimension(186, 14));
+		progressBar = new JProgressBar();
+		progressBar.setMaximumSize(new Dimension(32767, 15));
+		progressBar.setPreferredSize(new Dimension(186, 15));
 		progressPanel.add(progressBar);
 
-		JMenuBar menuBar = new JMenuBar();
+		menuBar = new JMenuBar();
 		setJMenuBar(menuBar);
 
-		JMenu mnFile = new JMenu("File");
+		mnFile = new JMenu("File");
 		mnFile.setMargin(new Insets(4, 4, 4, 4));
 		menuBar.add(mnFile);
 
-		JMenuItem mntmExit = new JMenuItem("Exit");
+		mntmPreferences = new JMenuItem("Preferences");
+		mntmPreferences.setPreferredSize(new Dimension(127, 22));
+		mnFile.add(mntmPreferences);
+
+		mntmExit = new JMenuItem("Exit");
 		mntmExit.setPreferredSize(new Dimension(127, 22));
 		mntmExit.addActionListener(new ActionListener() {
 			@Override
-			public void actionPerformed(ActionEvent arg0) {
-				System.exit(0);
+			public void actionPerformed(ActionEvent event) {
+				dispose();
 			}
 		});
 		mnFile.add(mntmExit);
 
-		JMenu mnAccount = new JMenu("Account");
+		mnAccount = new JMenu("Account");
 		mnAccount.setMargin(new Insets(4, 4, 4, 4));
-		mnAccount.setActionCommand("Account");
 		menuBar.add(mnAccount);
 
-		JMenuItem mntmAdd = new JMenuItem("Add");
-		mntmAdd.setPreferredSize(new Dimension(127, 22));
-		mnAccount.add(mntmAdd);
+		mntmAddAccount = new JMenuItem("Add");
+		mntmAddAccount.addActionListener(new ActionListener() {
+			/**
+			 * {@inheritDoc}
+			 */
+			@Override
+			public void actionPerformed(ActionEvent event) {
+				AccountDialog dialog = new AccountDialog(window, "Add new account", accountManager, cloudManager, null);
+				dialog.setVisible(true);
+				switch (dialog.getOption()) {
+				case JOptionPane.OK_OPTION:
+					AccountData account = dialog.getAccountData();
+					try {
+						cloud.createAccount(account.getName(), account.getCloud());
+						accountModel.addElement(account);
+						displayMessage("Added new account.");
+					} catch (MultiCloudException e) {
+						displayError(e.getMessage());
+					}
+					break;
+				case JOptionPane.CANCEL_OPTION:
+				case JOptionPane.CLOSED_OPTION:
+				default:
+					displayMessage("Adding account canceled.");
+					break;
+				}
+			}
+		});
+		mntmAddAccount.setPreferredSize(new Dimension(127, 22));
+		mnAccount.add(mntmAddAccount);
 
-		JMenuItem mntmAuthorize = new JMenuItem("Authorize");
+		mntmAuthorize = new JMenuItem("Authorize");
+		mntmAuthorize.addActionListener(new ActionListener() {
+			/**
+			 * {@inheritDoc}
+			 */
+			@Override
+			public void actionPerformed(ActionEvent event) {
+				if (accountList.getSelectedIndex() > -1) {
+					final AccountData account = accountList.getSelectedValue();
+					final AuthorizeDialog dialog = new AuthorizeDialog(window, "Waiting for authorization", "Authorization");
+					Thread t = new Thread() {
+						@Override
+						public void run() {
+							try {
+								cloud.authorizeAccount(account.getName(), new BrowserCallback(dialog));
+							} catch (MultiCloudException | OAuth2SettingsException | InterruptedException e) {
+								dialog.setAlwaysOnTop(false);
+								dialog.setFailed(true);
+								displayError(e.getMessage());
+							}
+							dialog.closeDialog();
+						};
+					};
+					t.start();
+					dialog.setVisible(true);
+					if (dialog.isAborted()) {
+						cloud.abortAuthorization();
+						displayMessage("Authorization aborted.");
+					} else {
+						try {
+							t.join();
+						} catch (InterruptedException e) {
+							displayError(e.getMessage());
+						}
+						if (!dialog.isFailed()) {
+							displayMessage("Account authorized.");
+							account.setAuthorized(true);
+						}
+					}
+				} else {
+					displayError("No account selected. Select one first.");
+				}
+			}
+		});
 		mntmAuthorize.setPreferredSize(new Dimension(127, 22));
 		mnAccount.add(mntmAuthorize);
 
-		JMenuItem mntmInformation = new JMenuItem("Information");
+		mntmInformation = new JMenuItem("Information");
 		mntmInformation.setPreferredSize(new Dimension(127, 22));
 		mnAccount.add(mntmInformation);
 
-		JMenuItem mntmQuota = new JMenuItem("Quota");
+		mntmQuota = new JMenuItem("Quota");
 		mntmQuota.setPreferredSize(new Dimension(127, 22));
 		mnAccount.add(mntmQuota);
 
-		JMenuItem mntmRename_1 = new JMenuItem("Rename");
-		mnAccount.add(mntmRename_1);
+		mntmRenameAccount = new JMenuItem("Rename");
+		mntmRenameAccount.setPreferredSize(new Dimension(127, 22));
+		mnAccount.add(mntmRenameAccount);
 
-		JMenuItem mntmRemove = new JMenuItem("Remove");
-		mntmRemove.setPreferredSize(new Dimension(127, 22));
-		mnAccount.add(mntmRemove);
+		mntmRemoveAccount = new JMenuItem("Remove");
+		mntmRemoveAccount.addActionListener(new ActionListener() {
+			@Override
+			public void actionPerformed(ActionEvent event) {
+				int[] selected = accountList.getSelectedIndices();
+				if (selected.length == 0) {
+					JOptionPane.showMessageDialog(window, "No account selected for deletion.", "No account selected.", JOptionPane.ERROR_MESSAGE);
+				}
+			}
+		});
+		mntmRemoveAccount.setPreferredSize(new Dimension(127, 22));
+		mnAccount.add(mntmRemoveAccount);
 
-		JMenu mnOperation = new JMenu("Operation");
+		mnOperation = new JMenu("Operation");
 		mnOperation.setMargin(new Insets(4, 4, 4, 4));
 		menuBar.add(mnOperation);
 
-		JMenuItem mntmUpload = new JMenuItem("Upload");
+		mntmUpload = new JMenuItem("Upload");
 		mntmUpload.addActionListener(new ActionListener() {
 			@Override
-			public void actionPerformed(ActionEvent e) {
+			public void actionPerformed(ActionEvent event) {
 				JTextField firstName = new JTextField();
 				JTextField lastName = new JTextField();
 				JPasswordField password = new JPasswordField();
@@ -199,38 +339,51 @@ public class MultiCloudDesktop extends JFrame {
 		mntmUpload.setPreferredSize(new Dimension(127, 22));
 		mnOperation.add(mntmUpload);
 
-		JMenuItem mntmDownload = new JMenuItem("Download");
-		mntmDownload.addActionListener(new ActionListener() {
-			@Override
-			public void actionPerformed(ActionEvent e) {
-				JOptionPane.showMessageDialog(window, "???");
-			}
-		});
+		mntmDownload = new JMenuItem("Download");
 		mntmDownload.setPreferredSize(new Dimension(127, 22));
 		mnOperation.add(mntmDownload);
 
-		JMenuItem mntmMultiDownload = new JMenuItem("Multi download");
+		mntmMultiDownload = new JMenuItem("Multi download");
+		mntmMultiDownload.addActionListener(new ActionListener() {
+			@Override
+			public void actionPerformed(ActionEvent event) {
+				ProgressDialog dialog = new ProgressDialog(window, progressListener.getComponents(), "Multi download");
+				dialog.setVisible(true);
+				System.out.println(dialog.isAborted());
+			}
+		});
 		mnOperation.add(mntmMultiDownload);
 
-		JMenuItem mntmCreateFolder = new JMenuItem("Create folder");
+		mntmCreateFolder = new JMenuItem("Create folder");
 		mntmCreateFolder.setPreferredSize(new Dimension(127, 22));
 		mnOperation.add(mntmCreateFolder);
 
-		JMenuItem mntmRename = new JMenuItem("Rename");
+		mntmRename = new JMenuItem("Rename");
 		mntmRename.setPreferredSize(new Dimension(127, 22));
 		mnOperation.add(mntmRename);
 
-		JMenuItem mntmMove = new JMenuItem("Move");
+		mntmMove = new JMenuItem("Move");
 		mntmMove.setPreferredSize(new Dimension(127, 22));
 		mnOperation.add(mntmMove);
 
-		JMenuItem mntmCopy = new JMenuItem("Copy");
+		mntmCopy = new JMenuItem("Copy");
 		mntmCopy.setPreferredSize(new Dimension(127, 22));
 		mnOperation.add(mntmCopy);
 
-		JMenuItem mntmDelete = new JMenuItem("Delete");
+		mntmDelete = new JMenuItem("Delete");
 		mntmDelete.setPreferredSize(new Dimension(127, 22));
 		mnOperation.add(mntmDelete);
+	}
+
+	private void displayError(String message) {
+		lblStatus.setForeground(Color.RED);
+		lblStatus.setText("Error: " + message);
+		JOptionPane.showMessageDialog(window, message, "Error", JOptionPane.ERROR_MESSAGE);
+	}
+
+	private void displayMessage(String message) {
+		lblStatus.setForeground(Color.BLACK);
+		lblStatus.setText(message);
 	}
 
 }
