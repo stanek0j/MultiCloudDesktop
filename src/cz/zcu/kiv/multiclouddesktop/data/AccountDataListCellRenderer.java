@@ -52,6 +52,8 @@ public class AccountDataListCellRenderer implements ListCellRenderer<AccountData
 			sb.append(Utils.formatSize(value.getFreeSpace(), UnitsFormat.BINARY));
 			sb.append(" / ");
 			sb.append(Utils.formatSize(value.getUsedSpace(), UnitsFormat.BINARY));
+		} else {
+			total = "Not authorized.";
 		}
 		JPanel cell = new JPanel();
 		JLabel cellTitle = new JLabel(value.getName());

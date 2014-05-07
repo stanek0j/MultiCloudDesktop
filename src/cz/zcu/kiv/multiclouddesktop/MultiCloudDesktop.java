@@ -3,12 +3,20 @@ package cz.zcu.kiv.multiclouddesktop;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Dimension;
+import java.awt.FlowLayout;
 import java.awt.Font;
 import java.awt.Insets;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.awt.image.BufferedImage;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 
+import javax.imageio.ImageIO;
 import javax.swing.DefaultListModel;
+import javax.swing.ImageIcon;
+import javax.swing.JButton;
 import javax.swing.JComponent;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
@@ -82,6 +90,7 @@ public class MultiCloudDesktop extends JFrame {
 	private final JLabel lblStatus;
 	private final JPanel progressPanel;
 	private final JProgressBar progressBar;
+	private final JButton btnAbort;
 
 	private final JMenuBar menuBar;
 	private final JMenu mnFile;
@@ -108,14 +117,34 @@ public class MultiCloudDesktop extends JFrame {
 	private final AccountManager accountManager;
 	private final CloudManager cloudManager;
 	private final DialogProgressListener progressListener;
+	private final ClassLoader loader;
 
 	public MultiCloudDesktop() {
+		loader = MultiCloudDesktop.class.getClassLoader();
+
 		setMinimumSize(new Dimension(720, 480));
 		setPreferredSize(new Dimension(720, 480));
 		setSize(new Dimension(720, 480));
 		setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 		setLocationByPlatform(true);
 		setTitle(APP_NAME);
+
+		try {
+			List<BufferedImage> images = new ArrayList<>();
+			images.add(ImageIO.read(loader.getResourceAsStream("cloud_16.png")));
+			images.add(ImageIO.read(loader.getResourceAsStream("cloud_24.png")));
+			images.add(ImageIO.read(loader.getResourceAsStream("cloud_32.png")));
+			images.add(ImageIO.read(loader.getResourceAsStream("cloud_36.png")));
+			images.add(ImageIO.read(loader.getResourceAsStream("cloud_48.png")));
+			images.add(ImageIO.read(loader.getResourceAsStream("cloud_64.png")));
+			images.add(ImageIO.read(loader.getResourceAsStream("cloud_72.png")));
+			images.add(ImageIO.read(loader.getResourceAsStream("cloud_96.png")));
+			images.add(ImageIO.read(loader.getResourceAsStream("cloud_128.png")));
+			images.add(ImageIO.read(loader.getResourceAsStream("cloud_256.png")));
+			setIconImages(images);
+		} catch (IOException e1) {
+			e1.printStackTrace();
+		}
 
 		cloud = new MultiCloud();
 		progressListener = new DialogProgressListener(200);
@@ -175,12 +204,25 @@ public class MultiCloudDesktop extends JFrame {
 		statusPanel.add(lblStatus, BorderLayout.CENTER);
 
 		progressPanel = new JPanel();
+		FlowLayout flowLayout = (FlowLayout) progressPanel.getLayout();
+		flowLayout.setVgap(2);
 		statusPanel.add(progressPanel, BorderLayout.EAST);
 
 		progressBar = new JProgressBar();
 		progressBar.setMaximumSize(new Dimension(32767, 15));
 		progressBar.setPreferredSize(new Dimension(186, 15));
 		progressPanel.add(progressBar);
+
+		btnAbort = new JButton("");
+		btnAbort.setEnabled(false);
+		btnAbort.setMargin(new Insets(2, 2, 2, 2));
+		btnAbort.setIcon(new ImageIcon("C:\\Users\\dbx\\git\\MultiCloudDesktop\\images\\abort.png"));
+		btnAbort.addActionListener(new ActionListener() {
+			@Override
+			public void actionPerformed(ActionEvent arg0) {
+			}
+		});
+		progressPanel.add(btnAbort);
 
 		menuBar = new JMenuBar();
 		setJMenuBar(menuBar);
@@ -196,6 +238,9 @@ public class MultiCloudDesktop extends JFrame {
 		mntmExit = new JMenuItem("Exit");
 		mntmExit.setPreferredSize(new Dimension(127, 22));
 		mntmExit.addActionListener(new ActionListener() {
+			/**
+			 * {@inheritDoc}
+			 */
 			@Override
 			public void actionPerformed(ActionEvent event) {
 				dispose();
@@ -252,7 +297,7 @@ public class MultiCloudDesktop extends JFrame {
 						@Override
 						public void run() {
 							try {
-								cloud.authorizeAccount(account.getName(), new BrowserCallback(dialog));
+								cloud.authorizeAccount(account.getName(), new BrowserCallback(dialog, window));
 							} catch (MultiCloudException | OAuth2SettingsException | InterruptedException e) {
 								dialog.setAlwaysOnTop(false);
 								dialog.setFailed(true);
@@ -294,6 +339,35 @@ public class MultiCloudDesktop extends JFrame {
 		mnAccount.add(mntmQuota);
 
 		mntmRenameAccount = new JMenuItem("Rename");
+		mntmRenameAccount.addActionListener(new ActionListener() {
+			@Override
+			public void actionPerformed(ActionEvent event) {
+				AccountData account = accountList.getSelectedValue();
+				if (account == null) {
+					JOptionPane.showMessageDialog(window, "No account selected for removal.", "Rename account", JOptionPane.ERROR_MESSAGE);
+				} else {
+					AccountDialog dialog = new AccountDialog(window, "Rename account", accountManager, cloudManager, account);
+					dialog.setVisible(true);
+					switch (dialog.getOption()) {
+					case JOptionPane.OK_OPTION:
+						AccountData renamed = dialog.getAccountData();
+						try {
+							cloud.renameAccount(account.getName(), renamed.getName());
+							accountModel.removeElement(account);
+							accountModel.addElement(renamed);
+							displayMessage("Account renamed.");
+						} catch (MultiCloudException e) {
+							displayError(e.getMessage());
+						}
+						break;
+					case JOptionPane.CANCEL_OPTION:
+					case JOptionPane.CLOSED_OPTION:
+					default:
+						displayMessage("Renaming account canceled.");
+						break;
+					}				}
+			}
+		});
 		mntmRenameAccount.setPreferredSize(new Dimension(127, 22));
 		mnAccount.add(mntmRenameAccount);
 
@@ -301,9 +375,27 @@ public class MultiCloudDesktop extends JFrame {
 		mntmRemoveAccount.addActionListener(new ActionListener() {
 			@Override
 			public void actionPerformed(ActionEvent event) {
-				int[] selected = accountList.getSelectedIndices();
-				if (selected.length == 0) {
-					JOptionPane.showMessageDialog(window, "No account selected for deletion.", "No account selected.", JOptionPane.ERROR_MESSAGE);
+				AccountData account = accountList.getSelectedValue();
+				if (account == null) {
+					JOptionPane.showMessageDialog(window, "No account selected for removal.", "Remove account", JOptionPane.ERROR_MESSAGE);
+				} else {
+					int result = JOptionPane.showConfirmDialog(window, "Are you sure you want to remove this account?", "Remove account", JOptionPane.OK_CANCEL_OPTION, JOptionPane.QUESTION_MESSAGE);
+					switch (result) {
+					case JOptionPane.OK_OPTION:
+						try {
+							cloud.deleteAccount(account.getName());
+							accountModel.removeElement(account);
+							displayMessage("Account removed.");
+						} catch (MultiCloudException e) {
+							displayError(e.getMessage());
+						}
+						break;
+					case JOptionPane.CANCEL_OPTION:
+					case JOptionPane.CLOSED_OPTION:
+					default:
+						displayMessage("Account removal canceled.");
+						break;
+					}
 				}
 			}
 		});

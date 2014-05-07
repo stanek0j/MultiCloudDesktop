@@ -65,6 +65,11 @@ public class AccountDialog extends JDialog {
 		for (CloudSettings cs: cloudManager.getAllCloudSettings()) {
 			cmbCloud.addItem(cs);
 		}
+		if (account != null) {
+			txtName.setText(account.getName());
+			cmbCloud.setSelectedItem(cloudManager.getCloudSettings(account.getCloud()));
+			cmbCloud.setEnabled(false);
+		}
 		int labelWidth = (lblName.getPreferredSize().width > lblCloud.getPreferredSize().width) ? lblName.getPreferredSize().width : lblCloud.getPreferredSize().width;
 		lblName.setPreferredSize(new Dimension(labelWidth, lblName.getPreferredSize().height));
 		lblCloud.setPreferredSize(new Dimension(labelWidth, lblCloud.getPreferredSize().height));
@@ -178,7 +183,14 @@ public class AccountDialog extends JDialog {
 		/* valid */
 		if (valid) {
 			if (account != null) {
-				account.setName(txtName.getText());
+				AccountData edited = new AccountData();
+				edited.setName(txtName.getText());
+				edited.setCloud(account.getCloud());
+				edited.setTotalSpace(account.getTotalSpace());
+				edited.setFreeSpace(account.getFreeSpace());
+				edited.setUsedSpace(account.getUsedSpace());
+				edited.setAuthorized(account.isAuthorized());
+				account = edited;
 			} else {
 				account = new AccountData();
 				account.setName(txtName.getText());
