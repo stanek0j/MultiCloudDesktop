@@ -1,7 +1,6 @@
 package cz.zcu.kiv.multiclouddesktop;
 
 import java.awt.BorderLayout;
-import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.Font;
@@ -15,6 +14,7 @@ import java.util.List;
 
 import javax.imageio.ImageIO;
 import javax.swing.DefaultListModel;
+import javax.swing.Icon;
 import javax.swing.ImageIcon;
 import javax.swing.JButton;
 import javax.swing.JComponent;
@@ -39,6 +39,8 @@ import javax.swing.border.EmptyBorder;
 
 import cz.zcu.kiv.multicloud.MultiCloud;
 import cz.zcu.kiv.multicloud.MultiCloudException;
+import cz.zcu.kiv.multicloud.json.AccountInfo;
+import cz.zcu.kiv.multicloud.json.AccountQuota;
 import cz.zcu.kiv.multicloud.json.AccountSettings;
 import cz.zcu.kiv.multicloud.json.FileInfo;
 import cz.zcu.kiv.multicloud.oauth2.OAuth2SettingsException;
@@ -46,6 +48,14 @@ import cz.zcu.kiv.multicloud.utils.AccountManager;
 import cz.zcu.kiv.multicloud.utils.CloudManager;
 import cz.zcu.kiv.multiclouddesktop.data.AccountData;
 import cz.zcu.kiv.multiclouddesktop.data.AccountDataListCellRenderer;
+import cz.zcu.kiv.multiclouddesktop.data.AccountInfoCallback;
+import cz.zcu.kiv.multiclouddesktop.data.AccountQuotaCallback;
+import cz.zcu.kiv.multiclouddesktop.data.BackgroundCallback;
+import cz.zcu.kiv.multiclouddesktop.data.BackgroundWorker;
+import cz.zcu.kiv.multiclouddesktop.data.FileInfoCallback;
+import cz.zcu.kiv.multiclouddesktop.data.FileInfoListCellRenderer;
+import cz.zcu.kiv.multiclouddesktop.data.MessageCallback;
+import cz.zcu.kiv.multiclouddesktop.data.Pair;
 import cz.zcu.kiv.multiclouddesktop.dialog.AccountDialog;
 import cz.zcu.kiv.multiclouddesktop.dialog.AuthorizeDialog;
 import cz.zcu.kiv.multiclouddesktop.dialog.DialogProgressListener;
@@ -59,6 +69,10 @@ public class MultiCloudDesktop extends JFrame {
 	private static final String APP_NAME = "MultiCloudDesktop";
 
 	private static MultiCloudDesktop window;
+
+	public static MultiCloudDesktop getWindow() {
+		return window;
+	}
 
 	public static void main(String[] args) {
 		try {
@@ -83,9 +97,11 @@ public class MultiCloudDesktop extends JFrame {
 	private final DefaultListModel<AccountData> accountModel;
 	private final JList<AccountData> accountList;
 	private final AccountDataListCellRenderer accountRenderer;
-	private final JPanel contentPanel;
+	private final JPanel dataPanel;
 	private final JScrollPane dataScrollPane;
+	private final DefaultListModel<FileInfo> dataModel;
 	private final JList<FileInfo> dataList;
+	private final FileInfoListCellRenderer dataRenderer;
 	private final JPanel statusPanel;
 	private final JLabel lblStatus;
 	private final JPanel progressPanel;
@@ -104,6 +120,7 @@ public class MultiCloudDesktop extends JFrame {
 	private final JMenuItem mntmRenameAccount;
 	private final JMenuItem mntmRemoveAccount;
 	private final JMenu mnOperation;
+	private final JMenuItem mntmRefresh;
 	private final JMenuItem mntmUpload;
 	private final JMenuItem mntmDownload;
 	private final JMenuItem mntmMultiDownload;
@@ -118,6 +135,11 @@ public class MultiCloudDesktop extends JFrame {
 	private final CloudManager cloudManager;
 	private final DialogProgressListener progressListener;
 	private final ClassLoader loader;
+	private final BackgroundCallback<AccountInfo> infoCallback;
+	private final BackgroundCallback<Pair<String, AccountQuota>> quotaCallback;
+	private final BackgroundCallback<FileInfo> listCallback;
+	private final MessageCallback messageCallback;
+	private final BackgroundWorker worker;
 
 	public MultiCloudDesktop() {
 		loader = MultiCloudDesktop.class.getClassLoader();
@@ -129,6 +151,9 @@ public class MultiCloudDesktop extends JFrame {
 		setLocationByPlatform(true);
 		setTitle(APP_NAME);
 
+		Icon icnAbort = null;
+		Icon icnFolder = null;
+		Icon icnFile = null;
 		try {
 			List<BufferedImage> images = new ArrayList<>();
 			images.add(ImageIO.read(loader.getResourceAsStream("cloud_16.png")));
@@ -142,6 +167,9 @@ public class MultiCloudDesktop extends JFrame {
 			images.add(ImageIO.read(loader.getResourceAsStream("cloud_128.png")));
 			images.add(ImageIO.read(loader.getResourceAsStream("cloud_256.png")));
 			setIconImages(images);
+			icnAbort = new ImageIcon(ImageIO.read(loader.getResourceAsStream("abort.png")));
+			icnFolder = new ImageIcon(ImageIO.read(loader.getResourceAsStream("folder.png")));
+			icnFile = new ImageIcon(ImageIO.read(loader.getResourceAsStream("file.png")));
 		} catch (IOException e1) {
 			e1.printStackTrace();
 		}
@@ -179,17 +207,24 @@ public class MultiCloudDesktop extends JFrame {
 		accountList.setModel(accountModel);
 		accountList.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
 
-		contentPanel = new JPanel();
-		getContentPane().add(contentPanel, BorderLayout.CENTER);
-		contentPanel.setLayout(new BorderLayout(0, 0));
+		dataPanel = new JPanel();
+		getContentPane().add(dataPanel, BorderLayout.CENTER);
+		dataPanel.setLayout(new BorderLayout(0, 0));
 
 		dataScrollPane = new JScrollPane();
-		contentPanel.add(dataScrollPane, BorderLayout.CENTER);
+		dataPanel.add(dataScrollPane, BorderLayout.CENTER);
 
+		dataModel = new DefaultListModel<>();
 		dataList = new JList<>();
+		dataList.setFixedCellWidth(80);
+		dataList.setFixedCellHeight(96);
+		dataRenderer = new FileInfoListCellRenderer(icnFolder, icnFile);
 		dataList.setLayoutOrientation(JList.HORIZONTAL_WRAP);
 		dataList.setVisibleRowCount(-1);
 		dataScrollPane.setViewportView(dataList);
+		dataList.setCellRenderer(dataRenderer);
+		dataList.setModel(dataModel);
+		dataList.setSelectionMode(ListSelectionModel.MULTIPLE_INTERVAL_SELECTION);
 
 		statusPanel = new JPanel();
 		statusPanel.setMaximumSize(new Dimension(32767, 25));
@@ -213,16 +248,24 @@ public class MultiCloudDesktop extends JFrame {
 		progressBar.setPreferredSize(new Dimension(186, 15));
 		progressPanel.add(progressBar);
 
-		btnAbort = new JButton("");
+		btnAbort = new JButton(icnAbort);
 		btnAbort.setEnabled(false);
+		btnAbort.setPreferredSize(new Dimension(21, 21));
 		btnAbort.setMargin(new Insets(2, 2, 2, 2));
-		btnAbort.setIcon(new ImageIcon("C:\\Users\\dbx\\git\\MultiCloudDesktop\\images\\abort.png"));
 		btnAbort.addActionListener(new ActionListener() {
 			@Override
-			public void actionPerformed(ActionEvent arg0) {
+			public void actionPerformed(ActionEvent event) {
+				worker.abort();
 			}
 		});
 		progressPanel.add(btnAbort);
+
+		infoCallback = new AccountInfoCallback();
+		quotaCallback = new AccountQuotaCallback(accountModel);
+		listCallback = new FileInfoCallback(dataModel);
+		messageCallback = new MessageCallback(lblStatus);
+		worker = new BackgroundWorker(cloud, btnAbort, progressBar, infoCallback, quotaCallback, listCallback, messageCallback);
+		worker.start();
 
 		menuBar = new JMenuBar();
 		setJMenuBar(menuBar);
@@ -243,6 +286,7 @@ public class MultiCloudDesktop extends JFrame {
 			 */
 			@Override
 			public void actionPerformed(ActionEvent event) {
+				worker.terminate();
 				dispose();
 			}
 		});
@@ -267,15 +311,15 @@ public class MultiCloudDesktop extends JFrame {
 					try {
 						cloud.createAccount(account.getName(), account.getCloud());
 						accountModel.addElement(account);
-						displayMessage("Added new account.");
+						messageCallback.displayMessage("Added new account.");
 					} catch (MultiCloudException e) {
-						displayError(e.getMessage());
+						messageCallback.displayError(e.getMessage());
 					}
 					break;
 				case JOptionPane.CANCEL_OPTION:
 				case JOptionPane.CLOSED_OPTION:
 				default:
-					displayMessage("Adding account canceled.");
+					messageCallback.displayMessage("Adding account canceled.");
 					break;
 				}
 			}
@@ -301,7 +345,7 @@ public class MultiCloudDesktop extends JFrame {
 							} catch (MultiCloudException | OAuth2SettingsException | InterruptedException e) {
 								dialog.setAlwaysOnTop(false);
 								dialog.setFailed(true);
-								displayError(e.getMessage());
+								messageCallback.displayError(e.getMessage());
 							}
 							dialog.closeDialog();
 						};
@@ -310,20 +354,20 @@ public class MultiCloudDesktop extends JFrame {
 					dialog.setVisible(true);
 					if (dialog.isAborted()) {
 						cloud.abortAuthorization();
-						displayMessage("Authorization aborted.");
+						messageCallback.displayMessage("Authorization aborted.");
 					} else {
 						try {
 							t.join();
 						} catch (InterruptedException e) {
-							displayError(e.getMessage());
+							messageCallback.displayError(e.getMessage());
 						}
 						if (!dialog.isFailed()) {
-							displayMessage("Account authorized.");
+							messageCallback.displayMessage("Account authorized.");
 							account.setAuthorized(true);
 						}
 					}
 				} else {
-					displayError("No account selected. Select one first.");
+					messageCallback.displayError("No account selected. Select one first.");
 				}
 			}
 		});
@@ -331,10 +375,32 @@ public class MultiCloudDesktop extends JFrame {
 		mnAccount.add(mntmAuthorize);
 
 		mntmInformation = new JMenuItem("Information");
+		mntmInformation.addActionListener(new ActionListener() {
+			@Override
+			public void actionPerformed(ActionEvent event) {
+				AccountData account = accountList.getSelectedValue();
+				if (account == null) {
+					messageCallback.displayError("No account selected for listing its basic information.");
+				} else {
+					worker.accountInfo(account.getName());
+				}
+			}
+		});
 		mntmInformation.setPreferredSize(new Dimension(127, 22));
 		mnAccount.add(mntmInformation);
 
 		mntmQuota = new JMenuItem("Quota");
+		mntmQuota.addActionListener(new ActionListener() {
+			@Override
+			public void actionPerformed(ActionEvent event) {
+				AccountData account = accountList.getSelectedValue();
+				if (account == null) {
+					messageCallback.displayError("No account selected for listing its quota.");
+				} else {
+					worker.accountQuota(account.getName());
+				}
+			}
+		});
 		mntmQuota.setPreferredSize(new Dimension(127, 22));
 		mnAccount.add(mntmQuota);
 
@@ -344,7 +410,7 @@ public class MultiCloudDesktop extends JFrame {
 			public void actionPerformed(ActionEvent event) {
 				AccountData account = accountList.getSelectedValue();
 				if (account == null) {
-					JOptionPane.showMessageDialog(window, "No account selected for removal.", "Rename account", JOptionPane.ERROR_MESSAGE);
+					messageCallback.displayError("No account selected to be renamed.");
 				} else {
 					AccountDialog dialog = new AccountDialog(window, "Rename account", accountManager, cloudManager, account);
 					dialog.setVisible(true);
@@ -355,17 +421,18 @@ public class MultiCloudDesktop extends JFrame {
 							cloud.renameAccount(account.getName(), renamed.getName());
 							accountModel.removeElement(account);
 							accountModel.addElement(renamed);
-							displayMessage("Account renamed.");
+							messageCallback.displayMessage("Account renamed.");
 						} catch (MultiCloudException e) {
-							displayError(e.getMessage());
+							messageCallback.displayError(e.getMessage());
 						}
 						break;
 					case JOptionPane.CANCEL_OPTION:
 					case JOptionPane.CLOSED_OPTION:
 					default:
-						displayMessage("Renaming account canceled.");
+						messageCallback.displayMessage("Renaming account canceled.");
 						break;
-					}				}
+					}
+				}
 			}
 		});
 		mntmRenameAccount.setPreferredSize(new Dimension(127, 22));
@@ -385,15 +452,15 @@ public class MultiCloudDesktop extends JFrame {
 						try {
 							cloud.deleteAccount(account.getName());
 							accountModel.removeElement(account);
-							displayMessage("Account removed.");
+							messageCallback.displayMessage("Account removed.");
 						} catch (MultiCloudException e) {
-							displayError(e.getMessage());
+							messageCallback.displayError(e.getMessage());
 						}
 						break;
 					case JOptionPane.CANCEL_OPTION:
 					case JOptionPane.CLOSED_OPTION:
 					default:
-						displayMessage("Account removal canceled.");
+						messageCallback.displayMessage("Account removal canceled.");
 						break;
 					}
 				}
@@ -405,6 +472,21 @@ public class MultiCloudDesktop extends JFrame {
 		mnOperation = new JMenu("Operation");
 		mnOperation.setMargin(new Insets(4, 4, 4, 4));
 		menuBar.add(mnOperation);
+
+		mntmRefresh = new JMenuItem("Refresh");
+		mntmRefresh.addActionListener(new ActionListener() {
+			@Override
+			public void actionPerformed(ActionEvent event) {
+				AccountData account = accountList.getSelectedValue();
+				if (account == null) {
+					JOptionPane.showMessageDialog(window, "No account selected.", "Refresh", JOptionPane.ERROR_MESSAGE);
+				} else {
+					worker.refresh(account.getName());
+				}
+			}
+		});
+		mntmRefresh.setPreferredSize(new Dimension(127, 22));
+		mnOperation.add(mntmRefresh);
 
 		mntmUpload = new JMenuItem("Upload");
 		mntmUpload.addActionListener(new ActionListener() {
@@ -444,9 +526,16 @@ public class MultiCloudDesktop extends JFrame {
 				System.out.println(dialog.isAborted());
 			}
 		});
+		mntmMultiDownload.setPreferredSize(new Dimension(127, 22));
 		mnOperation.add(mntmMultiDownload);
 
 		mntmCreateFolder = new JMenuItem("Create folder");
+		mntmCreateFolder.addActionListener(new ActionListener() {
+			@Override
+			public void actionPerformed(ActionEvent event) {
+				worker.listFolder("GD", null, false, false);
+			}
+		});
 		mntmCreateFolder.setPreferredSize(new Dimension(127, 22));
 		mnOperation.add(mntmCreateFolder);
 
@@ -465,17 +554,6 @@ public class MultiCloudDesktop extends JFrame {
 		mntmDelete = new JMenuItem("Delete");
 		mntmDelete.setPreferredSize(new Dimension(127, 22));
 		mnOperation.add(mntmDelete);
-	}
-
-	private void displayError(String message) {
-		lblStatus.setForeground(Color.RED);
-		lblStatus.setText("Error: " + message);
-		JOptionPane.showMessageDialog(window, message, "Error", JOptionPane.ERROR_MESSAGE);
-	}
-
-	private void displayMessage(String message) {
-		lblStatus.setForeground(Color.BLACK);
-		lblStatus.setText(message);
 	}
 
 }
