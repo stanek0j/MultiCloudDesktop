@@ -12,6 +12,7 @@ package cz.zcu.kiv.multiclouddesktop.data;
 public enum BackgroundTask {
 
 	NONE,
+	LOAD,					// consists of the QUOTA and LIST_FOLDER operation for all cloud storages
 	REFRESH,				// consists of the QUOTA and LIST_FOLDER operation
 	INFO,
 	QUOTA,

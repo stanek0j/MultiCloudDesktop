@@ -7,10 +7,16 @@ import java.awt.Font;
 import java.awt.Insets;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.awt.event.KeyAdapter;
+import java.awt.event.KeyEvent;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.EmptyStackException;
 import java.util.List;
+import java.util.Stack;
 
 import javax.imageio.ImageIO;
 import javax.swing.DefaultListModel;
@@ -39,8 +45,7 @@ import javax.swing.border.EmptyBorder;
 
 import cz.zcu.kiv.multicloud.MultiCloud;
 import cz.zcu.kiv.multicloud.MultiCloudException;
-import cz.zcu.kiv.multicloud.json.AccountInfo;
-import cz.zcu.kiv.multicloud.json.AccountQuota;
+import cz.zcu.kiv.multicloud.filesystem.FileType;
 import cz.zcu.kiv.multicloud.json.AccountSettings;
 import cz.zcu.kiv.multicloud.json.FileInfo;
 import cz.zcu.kiv.multicloud.oauth2.OAuth2SettingsException;
@@ -50,12 +55,10 @@ import cz.zcu.kiv.multiclouddesktop.data.AccountData;
 import cz.zcu.kiv.multiclouddesktop.data.AccountDataListCellRenderer;
 import cz.zcu.kiv.multiclouddesktop.data.AccountInfoCallback;
 import cz.zcu.kiv.multiclouddesktop.data.AccountQuotaCallback;
-import cz.zcu.kiv.multiclouddesktop.data.BackgroundCallback;
 import cz.zcu.kiv.multiclouddesktop.data.BackgroundWorker;
 import cz.zcu.kiv.multiclouddesktop.data.FileInfoCallback;
 import cz.zcu.kiv.multiclouddesktop.data.FileInfoListCellRenderer;
 import cz.zcu.kiv.multiclouddesktop.data.MessageCallback;
-import cz.zcu.kiv.multiclouddesktop.data.Pair;
 import cz.zcu.kiv.multiclouddesktop.dialog.AccountDialog;
 import cz.zcu.kiv.multiclouddesktop.dialog.AuthorizeDialog;
 import cz.zcu.kiv.multiclouddesktop.dialog.DialogProgressListener;
@@ -126,8 +129,9 @@ public class MultiCloudDesktop extends JFrame {
 	private final JMenuItem mntmMultiDownload;
 	private final JMenuItem mntmCreateFolder;
 	private final JMenuItem mntmRename;
-	private final JMenuItem mntmMove;
+	private final JMenuItem mntmCut;
 	private final JMenuItem mntmCopy;
+	private final JMenuItem mntmPaste;
 	private final JMenuItem mntmDelete;
 
 	private final MultiCloud cloud;
@@ -135,11 +139,16 @@ public class MultiCloudDesktop extends JFrame {
 	private final CloudManager cloudManager;
 	private final DialogProgressListener progressListener;
 	private final ClassLoader loader;
-	private final BackgroundCallback<AccountInfo> infoCallback;
-	private final BackgroundCallback<Pair<String, AccountQuota>> quotaCallback;
-	private final BackgroundCallback<FileInfo> listCallback;
+	private final AccountInfoCallback infoCallback;
+	private final AccountQuotaCallback quotaCallback;
+	private final FileInfoCallback listCallback;
 	private final MessageCallback messageCallback;
 	private final BackgroundWorker worker;
+
+	private String currentAccount;
+	private final Stack<FileInfo> parentFolders;
+	private FileInfo currentFolder;
+	private FileInfo transferFile;
 
 	public MultiCloudDesktop() {
 		loader = MultiCloudDesktop.class.getClassLoader();
@@ -198,6 +207,34 @@ public class MultiCloudDesktop extends JFrame {
 			accountModel.addElement(data);
 		}
 		accountList = new JList<>();
+		accountList.addKeyListener(new KeyAdapter() {
+			@Override
+			public void keyPressed(KeyEvent event) {
+				AccountData account = accountList.getSelectedValue();
+				if (account != null) {
+					switch (event.getKeyCode()) {
+					case KeyEvent.VK_ENTER:
+					case KeyEvent.VK_SPACE:
+						break;
+					case KeyEvent.VK_DELETE:
+						break;
+					default:
+						break;
+					}
+				}
+			}
+		});
+		accountList.addMouseListener(new MouseAdapter() {
+			@Override
+			public void mouseClicked(MouseEvent event) {
+				AccountData account = accountList.getSelectedValue();
+				if (account != null) {
+					if (event.getButton() == MouseEvent.BUTTON1 && event.getClickCount() == 2) {
+						worker.listFolder(account.getName(), null, false, false);
+					}
+				}
+			}
+		});
 		accountRenderer = new AccountDataListCellRenderer(accountList.getFont().deriveFont(Font.BOLD, 14.0f), accountList.getFont());
 		accountList.setVisibleRowCount(-1);
 		accountScrollPane.setViewportView(accountList);
@@ -216,6 +253,22 @@ public class MultiCloudDesktop extends JFrame {
 
 		dataModel = new DefaultListModel<>();
 		dataList = new JList<>();
+		dataList.addKeyListener(new KeyAdapter() {
+			@Override
+			public void keyPressed(KeyEvent event) {
+			}
+		});
+		dataList.addMouseListener(new MouseAdapter() {
+			@Override
+			public void mouseClicked(MouseEvent event) {
+				FileInfo file = dataList.getSelectedValue();
+				if (file != null && file.getFileType() == FileType.FOLDER) {
+					if (event.getButton() == MouseEvent.BUTTON1 && event.getClickCount() == 2) {
+						worker.listFolder(currentAccount, file, false, false);
+					}
+				}
+			}
+		});
 		dataList.setFixedCellWidth(80);
 		dataList.setFixedCellHeight(96);
 		dataRenderer = new FileInfoListCellRenderer(icnFolder, icnFile);
@@ -224,7 +277,7 @@ public class MultiCloudDesktop extends JFrame {
 		dataScrollPane.setViewportView(dataList);
 		dataList.setCellRenderer(dataRenderer);
 		dataList.setModel(dataModel);
-		dataList.setSelectionMode(ListSelectionModel.MULTIPLE_INTERVAL_SELECTION);
+		dataList.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
 
 		statusPanel = new JPanel();
 		statusPanel.setMaximumSize(new Dimension(32767, 25));
@@ -260,12 +313,18 @@ public class MultiCloudDesktop extends JFrame {
 		});
 		progressPanel.add(btnAbort);
 
+		parentFolders = new Stack<>();
 		infoCallback = new AccountInfoCallback();
-		quotaCallback = new AccountQuotaCallback(accountModel);
-		listCallback = new FileInfoCallback(dataModel);
+		quotaCallback = new AccountQuotaCallback(accountList);
+		listCallback = new FileInfoCallback(accountList, dataList);
 		messageCallback = new MessageCallback(lblStatus);
 		worker = new BackgroundWorker(cloud, btnAbort, progressBar, infoCallback, quotaCallback, listCallback, messageCallback);
 		worker.start();
+		String[] accounts = new String[accountModel.getSize()];
+		for (int i = 0; i < accountModel.getSize(); i++) {
+			accounts[i] = accountModel.get(i).getName();
+		}
+		worker.load(accounts);
 
 		menuBar = new JMenuBar();
 		setJMenuBar(menuBar);
@@ -338,6 +397,9 @@ public class MultiCloudDesktop extends JFrame {
 					final AccountData account = accountList.getSelectedValue();
 					final AuthorizeDialog dialog = new AuthorizeDialog(window, "Waiting for authorization", "Authorization");
 					Thread t = new Thread() {
+						/**
+						 * {@inheritDoc}
+						 */
 						@Override
 						public void run() {
 							try {
@@ -364,6 +426,7 @@ public class MultiCloudDesktop extends JFrame {
 						if (!dialog.isFailed()) {
 							messageCallback.displayMessage("Account authorized.");
 							account.setAuthorized(true);
+							worker.refresh(account.getName(), null);
 						}
 					}
 				} else {
@@ -481,7 +544,7 @@ public class MultiCloudDesktop extends JFrame {
 				if (account == null) {
 					JOptionPane.showMessageDialog(window, "No account selected.", "Refresh", JOptionPane.ERROR_MESSAGE);
 				} else {
-					worker.refresh(account.getName());
+					worker.refresh(account.getName(), currentFolder);
 				}
 			}
 		});
@@ -543,17 +606,68 @@ public class MultiCloudDesktop extends JFrame {
 		mntmRename.setPreferredSize(new Dimension(127, 22));
 		mnOperation.add(mntmRename);
 
-		mntmMove = new JMenuItem("Move");
-		mntmMove.setPreferredSize(new Dimension(127, 22));
-		mnOperation.add(mntmMove);
+		mntmCut = new JMenuItem("Cut");
+		mntmCut.setPreferredSize(new Dimension(127, 22));
+		mnOperation.add(mntmCut);
 
 		mntmCopy = new JMenuItem("Copy");
 		mntmCopy.setPreferredSize(new Dimension(127, 22));
 		mnOperation.add(mntmCopy);
 
+		mntmPaste = new JMenuItem("Paste");
+		mntmPaste.setPreferredSize(new Dimension(127, 22));
+		mnOperation.add(mntmPaste);
+
 		mntmDelete = new JMenuItem("Delete");
 		mntmDelete.setPreferredSize(new Dimension(127, 22));
 		mnOperation.add(mntmDelete);
+	}
+
+	public String getCurrentAccount() {
+		return currentAccount;
+	}
+
+	public FileInfo getCurrentFolder() {
+		return currentFolder;
+	}
+
+	public FileInfo peekParentFolder() {
+		System.out.println("stack: " + parentFolders.size());
+		FileInfo parent = null;
+		try {
+			parent = parentFolders.peek();
+			if (parent != null) {
+				System.out.println("peek " + parent.getName());
+			} else {
+				System.out.println("peek null");
+			}
+		} catch (EmptyStackException e) {
+		}
+		return parent;
+	}
+
+	public void popParentFolder() {
+		try {
+			FileInfo parent = parentFolders.pop();
+			System.out.println("popped " + parent.getPath());
+		} catch (EmptyStackException e) {
+		}
+	}
+
+	public void pushParentFolder(FileInfo parent) {
+		if (parent != null) {
+			System.out.println("pushed in " + parent.getPath());
+			parent.setName("..");
+			parentFolders.push(parent);
+		}
+	}
+
+	public void setCurrentAccount(String currentAccount) {
+		this.currentAccount = currentAccount;
+	}
+
+	public void setCurrentFolder(FileInfo currentFolder) {
+		this.currentFolder = currentFolder;
 	}
 
 }

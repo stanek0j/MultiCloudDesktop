@@ -57,7 +57,12 @@ public class AccountDataListCellRenderer implements ListCellRenderer<AccountData
 		}
 		JPanel cell = new JPanel();
 		JLabel cellTitle = new JLabel(value.getName());
-		JLabel cellCloud = new JLabel(value.getCloud());
+		JLabel cellCloud = new JLabel();
+		if (value.isListed()) {
+			cellCloud.setText(value.getCloud() + " (listed)");
+		} else {
+			cellCloud.setText(value.getCloud());
+		}
 		JLabel cellTotal = new JLabel(total);
 		JLabel cellSpace = new JLabel(sb.toString());
 		cell.setLayout(new GridLayout(4, 1));

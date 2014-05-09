@@ -7,7 +7,7 @@ import javax.swing.JOptionPane;
 
 import cz.zcu.kiv.multiclouddesktop.MultiCloudDesktop;
 
-public class MessageCallback implements BackgroundCallback<Pair<Boolean, String>> {
+public class MessageCallback implements BackgroundCallback<Boolean> {
 
 	private final JLabel status;
 
@@ -27,12 +27,12 @@ public class MessageCallback implements BackgroundCallback<Pair<Boolean, String>
 	}
 
 	@Override
-	public void onFinish(BackgroundTask task, Pair<Boolean, String> result) {
+	public void onFinish(BackgroundTask task, String accountName, Boolean result) {
 		if (result != null) {
-			if (result.getFirst()) {
-				displayError(result.getSecond());
+			if (result) {
+				displayError(accountName);
 			} else {
-				displayMessage(result.getSecond());
+				displayMessage(accountName);
 			}
 		}
 	}

@@ -9,6 +9,7 @@ import cz.zcu.kiv.multicloud.json.AccountInfo;
 import cz.zcu.kiv.multicloud.json.AccountQuota;
 import cz.zcu.kiv.multicloud.json.FileInfo;
 import cz.zcu.kiv.multicloud.oauth2.OAuth2SettingsException;
+import cz.zcu.kiv.multiclouddesktop.MultiCloudDesktop;
 
 public class BackgroundWorker extends Thread {
 
@@ -17,12 +18,13 @@ public class BackgroundWorker extends Thread {
 	private final JProgressBar progressBar;
 
 	private final BackgroundCallback<AccountInfo> infoCallback;
-	private final BackgroundCallback<Pair<String, AccountQuota>> quotaCallback;
+	private final BackgroundCallback<AccountQuota> quotaCallback;
 	private final BackgroundCallback<FileInfo> listCallback;
-	private final BackgroundCallback<Pair<Boolean, String>> messageCallback;
+	private final BackgroundCallback<Boolean> messageCallback;
 
 	private BackgroundTask task;
 	private String account;
+	private String[] accounts;
 	private FileInfo src;
 	private FileInfo dst;
 	private String dstName;
@@ -30,15 +32,16 @@ public class BackgroundWorker extends Thread {
 	private boolean showShared;
 	/** If the thread should terminate. */
 	private boolean terminate;
+	private boolean aborted;
 
 	public BackgroundWorker(
 			MultiCloud cloud,
 			JButton abort,
 			JProgressBar progress,
 			BackgroundCallback<AccountInfo> infoCallback,
-			BackgroundCallback<Pair<String, AccountQuota>> quotaCallback,
+			BackgroundCallback<AccountQuota> quotaCallback,
 			BackgroundCallback<FileInfo> listCallback,
-			BackgroundCallback<Pair<Boolean, String>> messageCallback
+			BackgroundCallback<Boolean> messageCallback
 			) {
 		this.cloud = cloud;
 		this.btnAbort = abort;
@@ -48,11 +51,13 @@ public class BackgroundWorker extends Thread {
 		this.listCallback = listCallback;
 		this.messageCallback = messageCallback;
 		this.task = BackgroundTask.NONE;
+		this.aborted = false;
 	}
 
 	public synchronized void abort() {
 		if (task != BackgroundTask.NONE) {
 			cloud.abortOperation();
+			aborted = true;
 		}
 	}
 
@@ -108,12 +113,26 @@ public class BackgroundWorker extends Thread {
 		return ready;
 	}
 
-	public boolean refresh(String accountName) {
+	public boolean load(String[] accountNames) {
+		boolean ready = false;
+		synchronized (this) {
+			if (task == BackgroundTask.NONE) {
+				task = BackgroundTask.LOAD;
+				accounts = accountNames;
+				ready = true;
+				notifyAll();
+			}
+		}
+		return ready;
+	}
+
+	public boolean refresh(String accountName, FileInfo folder) {
 		boolean ready = false;
 		synchronized (this) {
 			if (task == BackgroundTask.NONE) {
 				task = BackgroundTask.REFRESH;
 				account = accountName;
+				src = folder;
 				ready = true;
 				notifyAll();
 			}
@@ -142,19 +161,46 @@ public class BackgroundWorker extends Thread {
 				beginOperation();
 			}
 			switch (task) {
+			case LOAD:
+				for (int i = 0; i < accounts.length; i++) {
+					try {
+						AccountQuota quota = cloud.accountQuota(accounts[i]);
+						if (quotaCallback != null) {
+							quotaCallback.onFinish(task, accounts[i], quota);
+						}
+					} catch (MultiCloudException | OAuth2SettingsException | InterruptedException e) {
+						synchronized (this) {
+							if (aborted) {
+								if (messageCallback != null) {
+									messageCallback.onFinish(task, "Loading aborted.", true);
+								}
+								break;
+							}
+						}
+					}
+				}
+				break;
 			case REFRESH:
 				try {
 					AccountQuota quota = cloud.accountQuota(account);
 					if (quotaCallback != null) {
-						quotaCallback.onFinish(task, new Pair<String, AccountQuota>(account, quota));
+						quotaCallback.onFinish(task, account, quota);
+					}
+					if (src != null) {
+						System.out.println("folder: " + src.getName());
 					}
 					FileInfo list = cloud.listFolder(account, src, showDeleted, showShared);
+					MultiCloudDesktop.getWindow().setCurrentAccount(account);
+					MultiCloudDesktop.getWindow().setCurrentFolder(list);
+					if (messageCallback != null) {
+						messageCallback.onFinish(task, "Account refreshed.", false);
+					}
 					if (listCallback != null) {
-						listCallback.onFinish(task, list);
+						listCallback.onFinish(task, account, list);
 					}
 				} catch (MultiCloudException | OAuth2SettingsException | InterruptedException e) {
 					if (messageCallback != null) {
-						messageCallback.onFinish(task, new Pair<Boolean, String>(true, e.getMessage()));
+						messageCallback.onFinish(task, e.getMessage(), true);
 					}
 				}
 				break;
@@ -162,14 +208,14 @@ public class BackgroundWorker extends Thread {
 				try {
 					AccountInfo info = cloud.accountInfo(account);
 					if (messageCallback != null) {
-						messageCallback.onFinish(task, new Pair<Boolean, String>(false, "Account information obtained."));
+						messageCallback.onFinish(task, "Account information obtained.", false);
 					}
 					if (infoCallback != null) {
-						infoCallback.onFinish(task, info);
+						infoCallback.onFinish(task, account, info);
 					}
 				} catch (MultiCloudException | OAuth2SettingsException | InterruptedException e) {
 					if (messageCallback != null) {
-						messageCallback.onFinish(task, new Pair<Boolean, String>(true, e.getMessage()));
+						messageCallback.onFinish(task, e.getMessage(), true);
 					}
 				}
 				break;
@@ -177,26 +223,46 @@ public class BackgroundWorker extends Thread {
 				try {
 					AccountQuota quota = cloud.accountQuota(account);
 					if (messageCallback != null) {
-						messageCallback.onFinish(task, new Pair<Boolean, String>(false, "Account quota obtained."));
+						messageCallback.onFinish(task, "Account quota obtained.", false);
 					}
 					if (quotaCallback != null) {
-						quotaCallback.onFinish(task, new Pair<String, AccountQuota>(account, quota));
+						quotaCallback.onFinish(task, account, quota);
 					}
 				} catch (MultiCloudException | OAuth2SettingsException | InterruptedException e) {
 					if (messageCallback != null) {
-						messageCallback.onFinish(task, new Pair<Boolean, String>(true, e.getMessage()));
+						messageCallback.onFinish(task, e.getMessage(), true);
 					}
 				}
 				break;
 			case LIST_FOLDER:
 				try {
+					if (src != null) {
+						System.out.println("folder: " + src.getName());
+					}
+					if (src != null && src.getName().equals("..")) {
+						MultiCloudDesktop.getWindow().popParentFolder();
+					}
 					FileInfo list = cloud.listFolder(account, src, showDeleted, showShared);
+					MultiCloudDesktop.getWindow().setCurrentAccount(account);
+					if (messageCallback != null) {
+						messageCallback.onFinish(task, "Folder listed.", false);
+					}
 					if (listCallback != null) {
-						listCallback.onFinish(task, list);
+						listCallback.onFinish(task, account, list);
+					}
+					if (src == null || !src.getName().equals("..")) {
+						MultiCloudDesktop.getWindow().pushParentFolder(list);
+					}
+					MultiCloudDesktop.getWindow().setCurrentFolder(list);
+					if (list != null) {
+						System.out.println("new folder: " + list.getName());
+						System.out.println("new folder: " + list.getPath());
+					} else {
+						System.out.println("new folder: null");
 					}
 				} catch (MultiCloudException | OAuth2SettingsException | InterruptedException e) {
 					if (messageCallback != null) {
-						messageCallback.onFinish(task, new Pair<Boolean, String>(true, e.getMessage()));
+						messageCallback.onFinish(task, e.getMessage(), true);
 					}
 				}
 				break;
@@ -219,6 +285,7 @@ public class BackgroundWorker extends Thread {
 			}
 			synchronized (this) {
 				task = BackgroundTask.NONE;
+				aborted = false;
 				System.out.println("worker done");
 			}
 		}

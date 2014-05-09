@@ -27,7 +27,7 @@ public class AccountInfoCallback implements BackgroundCallback<AccountInfo> {
 	 * {@inheritDoc}
 	 */
 	@Override
-	public void onFinish(BackgroundTask task, AccountInfo result) {
+	public void onFinish(BackgroundTask task, String accountName, AccountInfo result) {
 		JPanel namePanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
 		JLabel lblName = new JLabel("User name:");
 		lblName.setPreferredSize(new Dimension(60, lblName.getPreferredSize().height));

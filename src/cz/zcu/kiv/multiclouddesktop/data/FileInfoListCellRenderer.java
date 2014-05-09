@@ -26,6 +26,9 @@ public class FileInfoListCellRenderer implements ListCellRenderer<FileInfo> {
 
 	@Override
 	public Component getListCellRendererComponent(JList<? extends FileInfo> list, FileInfo value, int index, boolean isSelected, boolean cellHasFocus) {
+		if (value == null) {
+			return null;
+		}
 		JPanel cell = new JPanel();
 		cell.setBorder(new EmptyBorder(4, 4, 4, 4));
 		cell.setLayout(new BorderLayout());

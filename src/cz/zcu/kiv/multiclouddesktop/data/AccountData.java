@@ -23,6 +23,8 @@ public class AccountData {
 	private long usedSpace;
 	/** If the account is authorized. */
 	private boolean authorized;
+	/** If the account is listed. */
+	private boolean listed;
 
 	/**
 	 * Returns the cloud storage service provider for the account.
@@ -73,6 +75,14 @@ public class AccountData {
 	}
 
 	/**
+	 * Returns if the account is listed.
+	 * @return If the account is listed.
+	 */
+	public boolean isListed() {
+		return listed;
+	}
+
+	/**
 	 * Sets if the account is authorized.
 	 * @param authorized If the account is authorized.
 	 */
@@ -94,6 +104,14 @@ public class AccountData {
 	 */
 	public void setFreeSpace(long freeSpace) {
 		this.freeSpace = freeSpace;
+	}
+
+	/**
+	 * Sets if the account is listed.
+	 * @param listed If the account is listed.
+	 */
+	public void setListed(boolean listed) {
+		this.listed = listed;
 	}
 
 	/**
