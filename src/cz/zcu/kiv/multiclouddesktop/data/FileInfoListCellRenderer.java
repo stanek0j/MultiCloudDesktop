@@ -13,17 +13,35 @@ import javax.swing.border.EmptyBorder;
 import cz.zcu.kiv.multicloud.filesystem.FileType;
 import cz.zcu.kiv.multicloud.json.FileInfo;
 
+/**
+ * cz.zcu.kiv.multiclouddesktop.data/FileInfoListCellRenderer.java			<br /><br />
+ *
+ * Cell renderer for displaying {@link cz.zcu.kiv.multicloud.json.FileInfo} in {@link javax.swing.JList}.
+ *
+ * @author Jaromír Staněk
+ * @version 1.0
+ *
+ */
 public class FileInfoListCellRenderer implements ListCellRenderer<FileInfo> {
 
+	/** Icon for a folder. */
 	private final Icon folderIcon;
+	/** Icon for a file. */
 	private final Icon fileIcon;
 
+	/**
+	 * Ctor with icons.
+	 * @param folderIcon Folder icon.
+	 * @param fileIcon File icon.
+	 */
 	public FileInfoListCellRenderer(Icon folderIcon, Icon fileIcon) {
 		this.folderIcon = folderIcon;
 		this.fileIcon = fileIcon;
 	}
 
-
+	/**
+	 * {@inheritDoc}
+	 */
 	@Override
 	public Component getListCellRendererComponent(JList<? extends FileInfo> list, FileInfo value, int index, boolean isSelected, boolean cellHasFocus) {
 		if (value == null) {

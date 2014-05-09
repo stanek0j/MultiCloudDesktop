@@ -236,29 +236,14 @@ public class BackgroundWorker extends Thread {
 				break;
 			case LIST_FOLDER:
 				try {
-					if (src != null) {
-						System.out.println("folder: " + src.getName());
-					}
-					if (src != null && src.getName().equals("..")) {
-						MultiCloudDesktop.getWindow().popParentFolder();
-					}
 					FileInfo list = cloud.listFolder(account, src, showDeleted, showShared);
 					MultiCloudDesktop.getWindow().setCurrentAccount(account);
 					if (messageCallback != null) {
 						messageCallback.onFinish(task, "Folder listed.", false);
 					}
+					MultiCloudDesktop.getWindow().setCurrentFolder(list);
 					if (listCallback != null) {
 						listCallback.onFinish(task, account, list);
-					}
-					if (src == null || !src.getName().equals("..")) {
-						MultiCloudDesktop.getWindow().pushParentFolder(list);
-					}
-					MultiCloudDesktop.getWindow().setCurrentFolder(list);
-					if (list != null) {
-						System.out.println("new folder: " + list.getName());
-						System.out.println("new folder: " + list.getPath());
-					} else {
-						System.out.println("new folder: null");
 					}
 				} catch (MultiCloudException | OAuth2SettingsException | InterruptedException e) {
 					if (messageCallback != null) {

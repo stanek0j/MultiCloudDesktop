@@ -12,13 +12,29 @@ import javax.swing.JDialog;
 import javax.swing.JPanel;
 import javax.swing.border.EmptyBorder;
 
+/**
+ * cz.zcu.kiv.multiclouddesktop.dialog/ProgressDialog.java			<br /><br />
+ *
+ * Generic dialog with disabled window closing button and abort button.
+ *
+ * @author Jaromír Staněk
+ * @version 1.0
+ *
+ */
 public class ProgressDialog extends JDialog {
 
 	/** Serialization constant. */
 	private static final long serialVersionUID = 5717709239697167338L;
 
+	/** If the abort button was clicked. */
 	private boolean aborted;
 
+	/**
+	 * Ctor with necessary parameters.
+	 * @param parent Parent frame of the dialog.
+	 * @param content Content of the dialog.
+	 * @param title Title of the dialog.
+	 */
 	public ProgressDialog(Frame parent, JComponent[] content, String title) {
 		setTitle(title);
 		setAlwaysOnTop(true);

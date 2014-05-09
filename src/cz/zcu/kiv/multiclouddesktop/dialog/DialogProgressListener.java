@@ -15,20 +15,42 @@ import cz.zcu.kiv.multicloud.filesystem.ProgressListener;
 import cz.zcu.kiv.multicloud.utils.Utils;
 import cz.zcu.kiv.multicloud.utils.Utils.UnitsFormat;
 
+/**
+ * cz.zcu.kiv.multiclouddesktop.dialog/DialogProgressListener.java			<br /><br />
+ *
+ * Progress listener dialog that displays the progress in a progress bar.
+ *
+ * @author Jaromír Staněk
+ * @version 1.0
+ *
+ */
 public class DialogProgressListener extends ProgressListener {
 
+	/** Label for showing file sizes. */
 	private final JLabel lblSize;
+	/** Label for showing percentages. */
 	private final JLabel lblPercent;
+	/** Panel for holding progress labels. */
 	private final JPanel labelPanel;
+	/** Panel for holding progress bar. */
 	private final JPanel progressPanel;
+	/** Progress bar for showing the progress. */
 	private final JProgressBar progressBar;
 
+	/** Dialog displayed. */
 	private ProgressDialog dialog;
 
+	/**
+	 * Empty ctor.
+	 */
 	public DialogProgressListener() {
 		this(ProgressListener.DEFAULT_REFRESH_INTERVAL);
 	}
 
+	/**
+	 * Ctor with refresh interval.
+	 * @param refreshInterval Refresh interval.
+	 */
 	public DialogProgressListener(long refreshInterval) {
 		super(refreshInterval);
 		lblSize = new JLabel("Size");
@@ -49,6 +71,10 @@ public class DialogProgressListener extends ProgressListener {
 		progressPanel.add(progressBar);
 	}
 
+	/**
+	 * Returns the components of the dialog.
+	 * @return Array of dialog components.
+	 */
 	public JComponent[] getComponents() {
 		return new JComponent[] {
 				labelPanel,
@@ -56,10 +82,17 @@ public class DialogProgressListener extends ProgressListener {
 		};
 	}
 
+	/**
+	 * Return the dialog.
+	 * @return Progress dialog.
+	 */
 	public ProgressDialog getDialog() {
 		return dialog;
 	}
 
+	/**
+	 * Method for closing the dialog on operation finish.
+	 */
 	protected void onFinish() {
 		if (dialog != null) {
 			dialog.closeDialog();
@@ -87,6 +120,10 @@ public class DialogProgressListener extends ProgressListener {
 		}
 	}
 
+	/**
+	 * Sets the progress dialog.
+	 * @param dialog Progress dialog.
+	 */
 	public void setDialog(ProgressDialog dialog) {
 		this.dialog = dialog;
 	}

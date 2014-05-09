@@ -14,9 +14,8 @@ import java.awt.event.MouseEvent;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.EmptyStackException;
+import java.util.LinkedList;
 import java.util.List;
-import java.util.Stack;
 
 import javax.imageio.ImageIO;
 import javax.swing.DefaultListModel;
@@ -51,6 +50,7 @@ import cz.zcu.kiv.multicloud.json.FileInfo;
 import cz.zcu.kiv.multicloud.oauth2.OAuth2SettingsException;
 import cz.zcu.kiv.multicloud.utils.AccountManager;
 import cz.zcu.kiv.multicloud.utils.CloudManager;
+import cz.zcu.kiv.multicloud.utils.Utils;
 import cz.zcu.kiv.multiclouddesktop.data.AccountData;
 import cz.zcu.kiv.multiclouddesktop.data.AccountDataListCellRenderer;
 import cz.zcu.kiv.multiclouddesktop.data.AccountInfoCallback;
@@ -95,7 +95,7 @@ public class MultiCloudDesktop extends JFrame {
 		});
 	}
 
-	private final JPanel accountsPanel;
+	private final JPanel accountPanel;
 	private final JScrollPane accountScrollPane;
 	private final DefaultListModel<AccountData> accountModel;
 	private final JList<AccountData> accountList;
@@ -105,6 +105,8 @@ public class MultiCloudDesktop extends JFrame {
 	private final DefaultListModel<FileInfo> dataModel;
 	private final JList<FileInfo> dataList;
 	private final FileInfoListCellRenderer dataRenderer;
+	private final JPanel pathPanel;
+	private final JLabel lblPath;
 	private final JPanel statusPanel;
 	private final JLabel lblStatus;
 	private final JPanel progressPanel;
@@ -145,13 +147,15 @@ public class MultiCloudDesktop extends JFrame {
 	private final MessageCallback messageCallback;
 	private final BackgroundWorker worker;
 
+	private final LinkedList<FileInfo> currentPath;
 	private String currentAccount;
-	private final Stack<FileInfo> parentFolders;
 	private FileInfo currentFolder;
 	private FileInfo transferFile;
+	private final Object lock;
 
 	public MultiCloudDesktop() {
 		loader = MultiCloudDesktop.class.getClassLoader();
+		lock = new Object();
 
 		setMinimumSize(new Dimension(720, 480));
 		setPreferredSize(new Dimension(720, 480));
@@ -190,13 +194,13 @@ public class MultiCloudDesktop extends JFrame {
 		cloudManager = cloud.getSettings().getCloudManager();
 		cloud.validateAccounts();
 
-		accountsPanel = new JPanel();
-		getContentPane().add(accountsPanel, BorderLayout.WEST);
-		accountsPanel.setLayout(new BorderLayout(0, 0));
+		accountPanel = new JPanel();
+		getContentPane().add(accountPanel, BorderLayout.WEST);
+		accountPanel.setLayout(new BorderLayout(0, 0));
 
 		accountScrollPane = new JScrollPane();
 		accountScrollPane.setVerticalScrollBarPolicy(ScrollPaneConstants.VERTICAL_SCROLLBAR_ALWAYS);
-		accountsPanel.add(accountScrollPane);
+		accountPanel.add(accountScrollPane);
 
 		accountModel = new DefaultListModel<>();
 		for (AccountSettings account: accountManager.getAllAccountSettings()) {
@@ -230,6 +234,10 @@ public class MultiCloudDesktop extends JFrame {
 				AccountData account = accountList.getSelectedValue();
 				if (account != null) {
 					if (event.getButton() == MouseEvent.BUTTON1 && event.getClickCount() == 2) {
+						synchronized (lock) {
+							currentFolder = null;
+							currentPath.clear();
+						}
 						worker.listFolder(account.getName(), null, false, false);
 					}
 				}
@@ -251,6 +259,14 @@ public class MultiCloudDesktop extends JFrame {
 		dataScrollPane = new JScrollPane();
 		dataPanel.add(dataScrollPane, BorderLayout.CENTER);
 
+		pathPanel = new JPanel();
+		dataPanel.add(pathPanel, BorderLayout.NORTH);
+		pathPanel.setLayout(new BorderLayout(0, 0));
+
+		lblPath = new JLabel();
+		lblPath.setBorder(new EmptyBorder(4, 8, 4, 8));
+		pathPanel.add(lblPath, BorderLayout.CENTER);
+
 		dataModel = new DefaultListModel<>();
 		dataList = new JList<>();
 		dataList.addKeyListener(new KeyAdapter() {
@@ -264,7 +280,9 @@ public class MultiCloudDesktop extends JFrame {
 				FileInfo file = dataList.getSelectedValue();
 				if (file != null && file.getFileType() == FileType.FOLDER) {
 					if (event.getButton() == MouseEvent.BUTTON1 && event.getClickCount() == 2) {
-						worker.listFolder(currentAccount, file, false, false);
+						synchronized (lock) {
+							worker.listFolder(currentAccount, file, false, false);
+						}
 					}
 				}
 			}
@@ -313,10 +331,11 @@ public class MultiCloudDesktop extends JFrame {
 		});
 		progressPanel.add(btnAbort);
 
-		parentFolders = new Stack<>();
+		currentPath = new LinkedList<>();
 		infoCallback = new AccountInfoCallback();
 		quotaCallback = new AccountQuotaCallback(accountList);
 		listCallback = new FileInfoCallback(accountList, dataList);
+
 		messageCallback = new MessageCallback(lblStatus);
 		worker = new BackgroundWorker(cloud, btnAbort, progressBar, infoCallback, quotaCallback, listCallback, messageCallback);
 		worker.start();
@@ -325,6 +344,7 @@ public class MultiCloudDesktop extends JFrame {
 			accounts[i] = accountModel.get(i).getName();
 		}
 		worker.load(accounts);
+		refreshCurrentPath();
 
 		menuBar = new JMenuBar();
 		setJMenuBar(menuBar);
@@ -544,7 +564,9 @@ public class MultiCloudDesktop extends JFrame {
 				if (account == null) {
 					JOptionPane.showMessageDialog(window, "No account selected.", "Refresh", JOptionPane.ERROR_MESSAGE);
 				} else {
-					worker.refresh(account.getName(), currentFolder);
+					synchronized (lock) {
+						worker.refresh(account.getName(), currentFolder);
+					}
 				}
 			}
 		});
@@ -624,50 +646,74 @@ public class MultiCloudDesktop extends JFrame {
 	}
 
 	public String getCurrentAccount() {
-		return currentAccount;
+		synchronized (lock) {
+			return currentAccount;
+		}
 	}
 
 	public FileInfo getCurrentFolder() {
-		return currentFolder;
+		synchronized (lock) {
+			return currentFolder;
+		}
 	}
 
-	public FileInfo peekParentFolder() {
-		System.out.println("stack: " + parentFolders.size());
+	public FileInfo getParentFolder() {
 		FileInfo parent = null;
-		try {
-			parent = parentFolders.peek();
-			if (parent != null) {
-				System.out.println("peek " + parent.getName());
-			} else {
-				System.out.println("peek null");
+		synchronized (lock) {
+			if (currentPath.size() > 0) {
+				FileInfo p = currentPath.get(currentPath.size() - 1);
+				if (currentPath.size() > 1) {
+					p = currentPath.get(currentPath.size() - 2);
+				}
+				parent = new FileInfo();
+				parent.setContent(p.getContent());
+				parent.setDeleted(p.isDeleted());
+				parent.setFileType(p.getFileType());
+				parent.setId(p.getId());
+				parent.setIsRoot(p.isRoot());
+				parent.setMimeType(p.getMimeType());
+				parent.setName("..");
+				parent.setParents(p.getParents());
+				parent.setPath(p.getPath());
+				parent.setShared(p.isShared());
+				parent.setSize(p.getSize());
 			}
-		} catch (EmptyStackException e) {
+
 		}
 		return parent;
 	}
 
-	public void popParentFolder() {
-		try {
-			FileInfo parent = parentFolders.pop();
-			System.out.println("popped " + parent.getPath());
-		} catch (EmptyStackException e) {
+	private void refreshCurrentPath() {
+		StringBuilder sb = new StringBuilder();
+		for (FileInfo f: currentPath) {
+			if (!Utils.isNullOrEmpty(f.getName())) {
+				sb.append("/ ");
+				sb.append(f.getName());
+				sb.append(" ");
+			}
 		}
-	}
-
-	public void pushParentFolder(FileInfo parent) {
-		if (parent != null) {
-			System.out.println("pushed in " + parent.getPath());
-			parent.setName("..");
-			parentFolders.push(parent);
+		if (sb.length() == 0) {
+			sb.append("/");
 		}
+		lblPath.setText(sb.toString());
 	}
 
 	public void setCurrentAccount(String currentAccount) {
-		this.currentAccount = currentAccount;
+		synchronized (lock) {
+			this.currentAccount = currentAccount;
+		}
 	}
 
 	public void setCurrentFolder(FileInfo currentFolder) {
-		this.currentFolder = currentFolder;
+		synchronized (lock) {
+			this.currentFolder = currentFolder;
+			if (currentFolder.getName() != null && currentFolder.getName().equals("..")) {
+				currentPath.removeLast();
+			} else {
+				currentPath.add(currentFolder);
+			}
+			refreshCurrentPath();
+		}
 	}
 
 }

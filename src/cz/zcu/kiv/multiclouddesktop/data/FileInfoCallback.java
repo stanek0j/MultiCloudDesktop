@@ -6,11 +6,27 @@ import javax.swing.JList;
 import cz.zcu.kiv.multicloud.json.FileInfo;
 import cz.zcu.kiv.multiclouddesktop.MultiCloudDesktop;
 
+/**
+ * cz.zcu.kiv.multiclouddesktop.data/FileInfoCallback.java			<br /><br />
+ *
+ * Callback for displaying the contents of a folder.
+ *
+ * @author Jaromír Staněk
+ * @version 1.0
+ *
+ */
 public class FileInfoCallback implements BackgroundCallback<FileInfo> {
 
+	/** List of accounts. */
 	private final JList<AccountData> accountList;
+	/** List for showing folder content. */
 	private final JList<FileInfo> dataList;
 
+	/**
+	 * Ctor with necessary parameters.
+	 * @param accountList List of accounts.
+	 * @param dataList List for showing folder content.
+	 */
 	public FileInfoCallback(JList<AccountData> accountList, JList<FileInfo> dataList) {
 		this.accountList = accountList;
 		this.dataList = dataList;
@@ -36,7 +52,7 @@ public class FileInfoCallback implements BackgroundCallback<FileInfo> {
 		DefaultListModel<FileInfo> model = (DefaultListModel<FileInfo>) dataList.getModel();
 		model.clear();
 		if (!result.isRoot()) {
-			model.addElement(MultiCloudDesktop.getWindow().peekParentFolder());
+			model.addElement(MultiCloudDesktop.getWindow().getParentFolder());
 		}
 		for (FileInfo f: result.getContent()) {
 			model.addElement(f);

@@ -30,25 +30,49 @@ public class AccountDialog extends JDialog {
 	/** Serialization constant. */
 	private static final long serialVersionUID = 6531785115255798245L;
 
+	/** Cancel button. */
 	private final JButton btnCancel;
+	/** Confirmation button. */
 	private final JButton btnOk;
+	/** Combo box for choosing cloud storage service provider. */
 	private final JComboBox<CloudSettings> cmbCloud;
+	/** Label with description for combo box. */
 	private final JLabel lblCloud;
+	/** Label for invalid combo box selection error response. */
 	private final JLabel lblCloudErr;
+	/** Label with description for name text field. */
 	private final JLabel lblName;
+	/** Label for invalid name error response. */
 	private final JLabel lblNameErr;
+	/** Panel for holding buttons. */
 	private final JPanel buttonPanel;
+	/** Panel for displaying error on combo box. */
 	private final JPanel cloudErrPanel;
+	/** Panel for choosing cloud storage service provider. */
 	private final JPanel cloudPanel;
+	/** Panel for displaying error on entering name. */
 	private final JPanel nameErrPanel;
+	/** Panel for entering name. */
 	private final JPanel namePanel;
+	/** Text field for entering name. */
 	private final JTextField txtName;
 
+	/** Account manager. */
 	private final AccountManager accountManager;
 
+	/** Account to be edited. */
 	private AccountData account;
+	/** Return code from the dialog. */
 	private int option;
 
+	/**
+	 * Ctor with necessary parameters.
+	 * @param parent Parent frame.
+	 * @param title Dialog title.
+	 * @param accountManager Account manager.
+	 * @param cloudManager Cloud manager.
+	 * @param account Account to be edited.
+	 */
 	public AccountDialog(Frame parent, String title, AccountManager accountManager, CloudManager cloudManager, AccountData account) {
 		this.accountManager = accountManager;
 		this.account = account;
@@ -152,14 +176,26 @@ public class AccountDialog extends JDialog {
 		setModalityType(ModalityType.APPLICATION_MODAL);
 	}
 
+	/**
+	 * Returns the edited account.
+	 * @return Edited account.
+	 */
 	public AccountData getAccountData() {
 		return account;
 	}
 
+	/**
+	 * Returns the return code from the dialog.
+	 * @return Return code from the dialog.
+	 */
 	public int getOption() {
 		return option;
 	}
 
+	/**
+	 * Validates the input data from the user.
+	 * @return If the data passed the validation.
+	 */
 	private boolean validateFields() {
 		boolean valid = true;
 		lblNameErr.setText(null);
