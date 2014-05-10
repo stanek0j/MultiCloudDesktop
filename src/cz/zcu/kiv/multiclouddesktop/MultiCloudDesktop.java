@@ -4,6 +4,7 @@ import java.awt.BorderLayout;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.Font;
+import java.awt.FontMetrics;
 import java.awt.Insets;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
@@ -18,11 +19,10 @@ import java.util.LinkedList;
 import java.util.List;
 
 import javax.imageio.ImageIO;
+import javax.swing.Action;
 import javax.swing.DefaultListModel;
-import javax.swing.Icon;
 import javax.swing.ImageIcon;
 import javax.swing.JButton;
-import javax.swing.JComponent;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JList;
@@ -31,10 +31,9 @@ import javax.swing.JMenuBar;
 import javax.swing.JMenuItem;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
-import javax.swing.JPasswordField;
+import javax.swing.JPopupMenu;
 import javax.swing.JProgressBar;
 import javax.swing.JScrollPane;
-import javax.swing.JTextField;
 import javax.swing.ListSelectionModel;
 import javax.swing.ScrollPaneConstants;
 import javax.swing.SwingUtilities;
@@ -51,6 +50,17 @@ import cz.zcu.kiv.multicloud.oauth2.OAuth2SettingsException;
 import cz.zcu.kiv.multicloud.utils.AccountManager;
 import cz.zcu.kiv.multicloud.utils.CloudManager;
 import cz.zcu.kiv.multicloud.utils.Utils;
+import cz.zcu.kiv.multiclouddesktop.action.CopyAction;
+import cz.zcu.kiv.multiclouddesktop.action.CreateFolderAction;
+import cz.zcu.kiv.multiclouddesktop.action.CutAction;
+import cz.zcu.kiv.multiclouddesktop.action.DeleteAction;
+import cz.zcu.kiv.multiclouddesktop.action.DownloadAction;
+import cz.zcu.kiv.multiclouddesktop.action.MultiDownloadAction;
+import cz.zcu.kiv.multiclouddesktop.action.PasteAction;
+import cz.zcu.kiv.multiclouddesktop.action.PropertiesAction;
+import cz.zcu.kiv.multiclouddesktop.action.RefreshAction;
+import cz.zcu.kiv.multiclouddesktop.action.RenameAction;
+import cz.zcu.kiv.multiclouddesktop.action.UploadAction;
 import cz.zcu.kiv.multiclouddesktop.data.AccountData;
 import cz.zcu.kiv.multiclouddesktop.data.AccountDataListCellRenderer;
 import cz.zcu.kiv.multiclouddesktop.data.AccountInfoCallback;
@@ -94,7 +104,6 @@ public class MultiCloudDesktop extends JFrame {
 			}
 		});
 	}
-
 	private final JPanel accountPanel;
 	private final JScrollPane accountScrollPane;
 	private final DefaultListModel<AccountData> accountModel;
@@ -131,10 +140,36 @@ public class MultiCloudDesktop extends JFrame {
 	private final JMenuItem mntmMultiDownload;
 	private final JMenuItem mntmCreateFolder;
 	private final JMenuItem mntmRename;
+	private final JMenuItem mntmDelete;
 	private final JMenuItem mntmCut;
 	private final JMenuItem mntmCopy;
 	private final JMenuItem mntmPaste;
-	private final JMenuItem mntmDelete;
+	private final JMenuItem mntmProperties;
+
+	private final JPopupMenu popupMenu;
+	private final JMenuItem mntmRefreshPop;
+	private final JMenuItem mntmUploadPop;
+	private final JMenuItem mntmDownloadPop;
+	private final JMenuItem mntmMultiDownloadPop;
+	private final JMenuItem mntmCreateFolderPop;
+	private final JMenuItem mntmRenamePop;
+	private final JMenuItem mntmDeletePop;
+	private final JMenuItem mntmCutPop;
+	private final JMenuItem mntmCopyPop;
+	private final JMenuItem mntmPastePop;
+	private final JMenuItem mntmPropertiesPop;
+
+	private final Action actRefresh;
+	private final Action actUpload;
+	private final Action actDownload;
+	private final Action actMultiDownload;
+	private final Action actCreateFolder;
+	private final Action actRename;
+	private final Action actDelete;
+	private final Action actCut;
+	private final Action actCopy;
+	private final Action actPaste;
+	private final Action actProperties;
 
 	private final MultiCloud cloud;
 	private final AccountManager accountManager;
@@ -145,8 +180,8 @@ public class MultiCloudDesktop extends JFrame {
 	private final AccountQuotaCallback quotaCallback;
 	private final FileInfoCallback listCallback;
 	private final MessageCallback messageCallback;
-	private final BackgroundWorker worker;
 
+	private final BackgroundWorker worker;
 	private final LinkedList<FileInfo> currentPath;
 	private String currentAccount;
 	private FileInfo currentFolder;
@@ -164,9 +199,9 @@ public class MultiCloudDesktop extends JFrame {
 		setLocationByPlatform(true);
 		setTitle(APP_NAME);
 
-		Icon icnAbort = null;
-		Icon icnFolder = null;
-		Icon icnFile = null;
+		ImageIcon icnAbort = null;
+		ImageIcon icnFolder = null;
+		ImageIcon icnFile = null;
 		try {
 			List<BufferedImage> images = new ArrayList<>();
 			images.add(ImageIO.read(loader.getResourceAsStream("cloud_16.png")));
@@ -269,6 +304,7 @@ public class MultiCloudDesktop extends JFrame {
 
 		dataModel = new DefaultListModel<>();
 		dataList = new JList<>();
+		dataList.setLayoutOrientation(JList.HORIZONTAL_WRAP);
 		dataList.addKeyListener(new KeyAdapter() {
 			@Override
 			public void keyPressed(KeyEvent event) {
@@ -278,19 +314,36 @@ public class MultiCloudDesktop extends JFrame {
 			@Override
 			public void mouseClicked(MouseEvent event) {
 				FileInfo file = dataList.getSelectedValue();
-				if (file != null && file.getFileType() == FileType.FOLDER) {
-					if (event.getButton() == MouseEvent.BUTTON1 && event.getClickCount() == 2) {
+				if (SwingUtilities.isLeftMouseButton(event) && event.getClickCount() == 2) {
+					if (file != null && file.getFileType() == FileType.FOLDER) {
 						synchronized (lock) {
 							worker.listFolder(currentAccount, file, false, false);
 						}
 					}
 				}
 			}
+			@Override
+			public void mousePressed(MouseEvent event) {
+				if (event.isPopupTrigger()) {
+					showMenu(event);
+				}
+			}
+			@Override
+			public void mouseReleased(MouseEvent event) {
+				if (event.isPopupTrigger()) {
+					showMenu(event);
+				}
+			}
+			private void showMenu(MouseEvent event) {
+				dataList.setSelectedIndex(dataList.locationToIndex(event.getPoint()));
+				popupMenu.show(event.getComponent(), event.getX(), event.getY());
+			}
 		});
-		dataList.setFixedCellWidth(80);
-		dataList.setFixedCellHeight(96);
+		if (dataList.getLayoutOrientation() == JList.HORIZONTAL_WRAP) {
+			dataList.setFixedCellWidth(80);
+			dataList.setFixedCellHeight(96);
+		}
 		dataRenderer = new FileInfoListCellRenderer(icnFolder, icnFile);
-		dataList.setLayoutOrientation(JList.HORIZONTAL_WRAP);
 		dataList.setVisibleRowCount(-1);
 		dataScrollPane.setViewportView(dataList);
 		dataList.setCellRenderer(dataRenderer);
@@ -345,6 +398,18 @@ public class MultiCloudDesktop extends JFrame {
 		}
 		worker.load(accounts);
 		refreshCurrentPath();
+
+		actRefresh = new RefreshAction();
+		actUpload = new UploadAction();
+		actDownload = new DownloadAction();
+		actMultiDownload = new MultiDownloadAction();
+		actCreateFolder = new CreateFolderAction();
+		actRename = new RenameAction();
+		actDelete = new DeleteAction();
+		actCut = new CutAction();
+		actCopy = new CopyAction();
+		actPaste = new PasteAction();
+		actProperties = new PropertiesAction(window, dataList);
 
 		menuBar = new JMenuBar();
 		setJMenuBar(menuBar);
@@ -573,32 +638,15 @@ public class MultiCloudDesktop extends JFrame {
 		mntmRefresh.setPreferredSize(new Dimension(127, 22));
 		mnOperation.add(mntmRefresh);
 
-		mntmUpload = new JMenuItem("Upload");
-		mntmUpload.addActionListener(new ActionListener() {
-			@Override
-			public void actionPerformed(ActionEvent event) {
-				JTextField firstName = new JTextField();
-				JTextField lastName = new JTextField();
-				JPasswordField password = new JPasswordField();
-				final JComponent[] inputs = new JComponent[] {
-						new JLabel("First"),
-						firstName,
-						new JLabel("Last"),
-						lastName,
-						new JLabel("Password"),
-						password
-				};
-				JOptionPane.showMessageDialog(window, inputs, "My custom dialog", JOptionPane.PLAIN_MESSAGE);
-				System.out.println("You entered " +
-						firstName.getText() + ", " +
-						lastName.getText() + ", " +
-						String.copyValueOf(password.getPassword()));
-			}
-		});
+		mnOperation.addSeparator();
+
+		mntmUpload = new JMenuItem();
+		mntmUpload.setAction(actUpload);
 		mntmUpload.setPreferredSize(new Dimension(127, 22));
 		mnOperation.add(mntmUpload);
 
-		mntmDownload = new JMenuItem("Download");
+		mntmDownload = new JMenuItem();
+		mntmDownload.setAction(actDownload);
 		mntmDownload.setPreferredSize(new Dimension(127, 22));
 		mnOperation.add(mntmDownload);
 
@@ -614,35 +662,112 @@ public class MultiCloudDesktop extends JFrame {
 		mntmMultiDownload.setPreferredSize(new Dimension(127, 22));
 		mnOperation.add(mntmMultiDownload);
 
-		mntmCreateFolder = new JMenuItem("Create folder");
-		mntmCreateFolder.addActionListener(new ActionListener() {
-			@Override
-			public void actionPerformed(ActionEvent event) {
-				worker.listFolder("GD", null, false, false);
-			}
-		});
+		mnOperation.addSeparator();
+
+		mntmCreateFolder = new JMenuItem();
+		mntmCreateFolder.setAction(actCreateFolder);
 		mntmCreateFolder.setPreferredSize(new Dimension(127, 22));
 		mnOperation.add(mntmCreateFolder);
 
-		mntmRename = new JMenuItem("Rename");
+		mntmRename = new JMenuItem();
+		mntmRename.setAction(actRename);
 		mntmRename.setPreferredSize(new Dimension(127, 22));
 		mnOperation.add(mntmRename);
 
-		mntmCut = new JMenuItem("Cut");
+		mntmDelete = new JMenuItem();
+		mntmDelete.setAction(actDelete);
+		mntmDelete.setPreferredSize(new Dimension(127, 22));
+		mnOperation.add(mntmDelete);
+
+		mnOperation.addSeparator();
+
+		mntmCut = new JMenuItem();
+		mntmCut.setAction(actCut);
 		mntmCut.setPreferredSize(new Dimension(127, 22));
 		mnOperation.add(mntmCut);
 
-		mntmCopy = new JMenuItem("Copy");
+		mntmCopy = new JMenuItem();
+		mntmCopy.setAction(actCopy);
 		mntmCopy.setPreferredSize(new Dimension(127, 22));
 		mnOperation.add(mntmCopy);
 
-		mntmPaste = new JMenuItem("Paste");
+		mntmPaste = new JMenuItem();
+		mntmPaste.setAction(actPaste);
 		mntmPaste.setPreferredSize(new Dimension(127, 22));
 		mnOperation.add(mntmPaste);
 
-		mntmDelete = new JMenuItem("Delete");
-		mntmDelete.setPreferredSize(new Dimension(127, 22));
-		mnOperation.add(mntmDelete);
+		mnOperation.addSeparator();
+
+		mntmProperties = new JMenuItem();
+		mntmProperties.setAction(actProperties);
+		mntmProperties.setPreferredSize(new Dimension(127, 22));
+		mnOperation.add(mntmProperties);
+
+		popupMenu = new JPopupMenu();
+
+		mntmRefreshPop = new JMenuItem();
+		mntmRefreshPop.setAction(actRefresh);
+		mntmRefreshPop.setPreferredSize(new Dimension(127, 22));
+		popupMenu.add(mntmRefreshPop);
+
+		popupMenu.addSeparator();
+
+		mntmUploadPop = new JMenuItem();
+		mntmUploadPop.setAction(actUpload);
+		mntmUploadPop.setPreferredSize(new Dimension(127, 22));
+		popupMenu.add(mntmUploadPop);
+
+		mntmDownloadPop = new JMenuItem();
+		mntmDownloadPop.setAction(actDownload);
+		mntmDownloadPop.setPreferredSize(new Dimension(127, 22));
+		popupMenu.add(mntmDownloadPop);
+
+		mntmMultiDownloadPop = new JMenuItem();
+		mntmMultiDownloadPop.setAction(actMultiDownload);
+		mntmMultiDownloadPop.setPreferredSize(new Dimension(127, 22));
+		popupMenu.add(mntmMultiDownloadPop);
+
+		popupMenu.addSeparator();
+
+		mntmCreateFolderPop = new JMenuItem();
+		mntmCreateFolderPop.setAction(actCreateFolder);
+		mntmCreateFolderPop.setPreferredSize(new Dimension(127, 22));
+		popupMenu.add(mntmCreateFolderPop);
+
+		mntmRenamePop = new JMenuItem();
+		mntmRenamePop.setAction(actRename);
+		mntmRenamePop.setPreferredSize(new Dimension(127, 22));
+		popupMenu.add(mntmRenamePop);
+
+		mntmDeletePop = new JMenuItem();
+		mntmDeletePop.setAction(actDelete);
+		mntmDeletePop.setPreferredSize(new Dimension(127, 22));
+		popupMenu.add(mntmDeletePop);
+
+		popupMenu.addSeparator();
+
+		mntmCutPop = new JMenuItem();
+		mntmCutPop.setAction(actCut);
+		mntmCutPop.setPreferredSize(new Dimension(127, 22));
+		popupMenu.add(mntmCutPop);
+
+		mntmCopyPop = new JMenuItem();
+		mntmCopyPop.setAction(actCopy);
+		mntmCopyPop.setPreferredSize(new Dimension(127, 22));
+		popupMenu.add(mntmCopyPop);
+
+		mntmPastePop = new JMenuItem();
+		mntmPastePop.setAction(actPaste);
+		mntmPastePop.setPreferredSize(new Dimension(127, 22));
+		popupMenu.add(mntmPastePop);
+
+		popupMenu.addSeparator();
+
+		mntmPropertiesPop = new JMenuItem();
+		mntmPropertiesPop.setAction(actProperties);
+		mntmPropertiesPop.setPreferredSize(new Dimension(127, 22));
+		popupMenu.add(mntmPropertiesPop);
+
 	}
 
 	public String getCurrentAccount() {
@@ -685,15 +810,29 @@ public class MultiCloudDesktop extends JFrame {
 
 	private void refreshCurrentPath() {
 		StringBuilder sb = new StringBuilder();
-		for (FileInfo f: currentPath) {
-			if (!Utils.isNullOrEmpty(f.getName())) {
-				sb.append("/ ");
-				sb.append(f.getName());
-				sb.append(" ");
+		synchronized (lock) {
+			for (FileInfo f: currentPath) {
+				if (!Utils.isNullOrEmpty(f.getName())) {
+					sb.append("/ ");
+					sb.append(f.getName());
+					sb.append(" ");
+				}
 			}
 		}
 		if (sb.length() == 0) {
 			sb.append("/");
+		}
+		/* clip the string from the left side */
+		FontMetrics metrics = lblPath.getFontMetrics(lblPath.getFont());
+		Insets insets = lblPath.getBorder().getBorderInsets(lblPath);
+		int width = lblPath.getSize().width - insets.left - insets.right;
+		if (width > 0) {
+			if (metrics.stringWidth(sb.toString()) > width) {
+				sb.insert(0, "...");
+			}
+			while (metrics.stringWidth(sb.toString()) > width) {
+				sb.deleteCharAt(3);
+			}
 		}
 		lblPath.setText(sb.toString());
 	}
@@ -715,5 +854,4 @@ public class MultiCloudDesktop extends JFrame {
 			refreshCurrentPath();
 		}
 	}
-
 }

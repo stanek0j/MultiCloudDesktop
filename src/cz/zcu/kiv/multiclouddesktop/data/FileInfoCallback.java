@@ -3,6 +3,7 @@ package cz.zcu.kiv.multiclouddesktop.data;
 import javax.swing.DefaultListModel;
 import javax.swing.JList;
 
+import cz.zcu.kiv.multicloud.filesystem.FileType;
 import cz.zcu.kiv.multicloud.json.FileInfo;
 import cz.zcu.kiv.multiclouddesktop.MultiCloudDesktop;
 
@@ -54,8 +55,16 @@ public class FileInfoCallback implements BackgroundCallback<FileInfo> {
 		if (!result.isRoot()) {
 			model.addElement(MultiCloudDesktop.getWindow().getParentFolder());
 		}
+		/* loop twice - first for folders, then for files */
 		for (FileInfo f: result.getContent()) {
-			model.addElement(f);
+			if (f.getFileType() == FileType.FOLDER) {
+				model.addElement(f);
+			}
+		}
+		for (FileInfo f: result.getContent()) {
+			if (f.getFileType() == FileType.FILE) {
+				model.addElement(f);
+			}
 		}
 	}
 
