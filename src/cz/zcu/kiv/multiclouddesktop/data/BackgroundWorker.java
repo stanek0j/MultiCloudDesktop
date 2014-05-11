@@ -128,15 +128,13 @@ public class BackgroundWorker extends Thread {
 		btnAbort.setEnabled(false);
 	}
 
-	public boolean listFolder(String accountName, FileInfo folder, boolean showDeleted, boolean showShared) {
+	public boolean listFolder(String accountName, FileInfo folder) {
 		boolean ready = false;
 		synchronized (this) {
 			if (task == BackgroundTask.NONE) {
 				task = BackgroundTask.LIST_FOLDER;
 				account = accountName;
 				src = folder;
-				this.showDeleted = showDeleted;
-				this.showShared = showShared;
 				ready = true;
 				notifyAll();
 			}
@@ -233,12 +231,9 @@ public class BackgroundWorker extends Thread {
 					if (quotaCallback != null) {
 						quotaCallback.onFinish(task, account, quota);
 					}
-					if (src != null) {
-						System.out.println("folder: " + src.getName());
-					}
 					FileInfo list = cloud.listFolder(account, src, showDeleted, showShared);
 					MultiCloudDesktop.getWindow().setCurrentAccount(account);
-					MultiCloudDesktop.getWindow().setCurrentFolder(list);
+					MultiCloudDesktop.getWindow().setCurrentFolder(task, list);
 					if (messageCallback != null) {
 						messageCallback.onFinish(task, "Account refreshed.", false);
 					}
@@ -285,7 +280,7 @@ public class BackgroundWorker extends Thread {
 				try {
 					FileInfo list = cloud.listFolder(account, src, showDeleted, showShared);
 					MultiCloudDesktop.getWindow().setCurrentAccount(account);
-					MultiCloudDesktop.getWindow().setCurrentFolder(list);
+					MultiCloudDesktop.getWindow().setCurrentFolder(task, list);
 					if (listCallback != null) {
 						listCallback.onFinish(task, account, list);
 					}

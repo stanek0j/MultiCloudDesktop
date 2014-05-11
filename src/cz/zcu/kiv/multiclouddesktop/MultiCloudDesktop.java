@@ -66,6 +66,7 @@ import cz.zcu.kiv.multiclouddesktop.data.AccountData;
 import cz.zcu.kiv.multiclouddesktop.data.AccountDataListCellRenderer;
 import cz.zcu.kiv.multiclouddesktop.data.AccountInfoCallback;
 import cz.zcu.kiv.multiclouddesktop.data.AccountQuotaCallback;
+import cz.zcu.kiv.multiclouddesktop.data.BackgroundTask;
 import cz.zcu.kiv.multiclouddesktop.data.BackgroundWorker;
 import cz.zcu.kiv.multiclouddesktop.data.FileInfoCallback;
 import cz.zcu.kiv.multiclouddesktop.data.FileInfoListCellRenderer;
@@ -263,7 +264,7 @@ public class MultiCloudDesktop extends JFrame {
 								currentFolder = null;
 								currentPath.clear();
 							}
-							worker.listFolder(account.getName(), null, false, false);
+							worker.listFolder(account.getName(), null);
 						}
 						break;
 					case KeyEvent.VK_DELETE:
@@ -284,7 +285,7 @@ public class MultiCloudDesktop extends JFrame {
 							currentFolder = null;
 							currentPath.clear();
 						}
-						worker.listFolder(account.getName(), null, false, false);
+						worker.listFolder(account.getName(), null);
 					}
 				}
 			}
@@ -322,7 +323,7 @@ public class MultiCloudDesktop extends JFrame {
 				FileInfo file = dataList.getSelectedValue();
 				if (event.getKeyCode() == KeyEvent.VK_SPACE || event.getKeyCode() == KeyEvent.VK_ENTER) {
 					if (file != null && file.getFileType() == FileType.FOLDER) {
-						worker.listFolder(currentAccount, file, false, false);
+						worker.listFolder(currentAccount, file);
 					}
 				}
 			}
@@ -333,7 +334,7 @@ public class MultiCloudDesktop extends JFrame {
 				FileInfo file = dataList.getSelectedValue();
 				if (SwingUtilities.isLeftMouseButton(event) && event.getClickCount() == 2) {
 					if (file != null && file.getFileType() == FileType.FOLDER) {
-						worker.listFolder(currentAccount, file, false, false);
+						worker.listFolder(currentAccount, file);
 					}
 				}
 			}
@@ -776,6 +777,12 @@ public class MultiCloudDesktop extends JFrame {
 	}
 
 	public boolean actionRefresh(String accountName) {
+		synchronized (lock) {
+			if (accountName != null && !accountName.equals(currentAccount)) {
+				currentFolder = null;
+				currentPath.clear();
+			}
+		}
 		return worker.refresh(accountName, currentFolder);
 	}
 
@@ -868,12 +875,17 @@ public class MultiCloudDesktop extends JFrame {
 		}
 	}
 
-	public void setCurrentFolder(FileInfo currentFolder) {
+	public void setCurrentFolder(BackgroundTask task, FileInfo currentFolder) {
 		synchronized (lock) {
 			this.currentFolder = currentFolder;
-			if (currentFolder.getName() != null && currentFolder.getName().equals("..")) {
-				currentPath.removeLast();
-			} else {
+			if (task == BackgroundTask.LIST_FOLDER) {
+				if (currentFolder.getName() != null && currentFolder.getName().equals("..")) {
+					currentPath.removeLast();
+				} else {
+					currentPath.add(currentFolder);
+				}
+			}
+			if (currentPath.isEmpty()) {
 				currentPath.add(currentFolder);
 			}
 			refreshCurrentPath();
