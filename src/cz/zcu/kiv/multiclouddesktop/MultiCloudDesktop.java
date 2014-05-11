@@ -420,7 +420,7 @@ public class MultiCloudDesktop extends JFrame {
 		actDownload = new DownloadAction();
 		actMultiDownload = new MultiDownloadAction();
 		actCreateFolder = new CreateFolderAction(this);
-		actRename = new RenameAction();
+		actRename = new RenameAction(this);
 		actDelete = new DeleteAction(this);
 		actCut = new CutAction(this);
 		actCopy = new CopyAction(this);
@@ -749,7 +749,7 @@ public class MultiCloudDesktop extends JFrame {
 		transferType = TransferType.COPY;
 	}
 
-	public void actionCreateFolder(String name) {
+	public synchronized void actionCreateFolder(String name) {
 		worker.createFolder(currentAccount, name, currentFolder);
 	}
 
@@ -780,7 +780,7 @@ public class MultiCloudDesktop extends JFrame {
 		transferType = TransferType.NONE;
 	}
 
-	public boolean actionRefresh(String accountName) {
+	public synchronized boolean actionRefresh(String accountName) {
 		synchronized (lock) {
 			if (accountName != null && !accountName.equals(currentAccount)) {
 				currentFolder = null;
@@ -788,6 +788,10 @@ public class MultiCloudDesktop extends JFrame {
 			}
 		}
 		return worker.refresh(accountName, currentFolder);
+	}
+
+	public synchronized void actionRename(String name, FileInfo file) {
+		worker.rename(currentAccount, name, file, currentFolder);
 	}
 
 	public JList<AccountData> getAccountList() {

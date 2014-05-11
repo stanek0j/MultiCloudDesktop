@@ -200,6 +200,22 @@ public class BackgroundWorker extends Thread {
 		return ready;
 	}
 
+	public boolean rename(String accountName, String name, FileInfo file, FileInfo folder) {
+		boolean ready = false;
+		synchronized (this) {
+			if (task == BackgroundTask.NONE) {
+				task = BackgroundTask.RENAME;
+				account = accountName;
+				src = file;
+				dst = folder;
+				dstName = name;
+				ready = true;
+				notifyAll();
+			}
+		}
+		return ready;
+	}
+
 	/**
 	 * {@inheritDoc}
 	 */
@@ -326,6 +342,24 @@ public class BackgroundWorker extends Thread {
 				}
 				break;
 			case RENAME:
+				try {
+					cloud.rename(account, src, dstName);
+					AccountQuota quota = cloud.accountQuota(account);
+					FileInfo list = cloud.listFolder(account, dst, showDeleted, showShared);
+					if (messageCallback != null) {
+						messageCallback.onFinish(task, "Folder created.", false);
+					}
+					if (quotaCallback != null) {
+						quotaCallback.onFinish(task, account, quota);
+					}
+					if (listCallback != null) {
+						listCallback.onFinish(task, account, list);
+					}
+				} catch (MultiCloudException | OAuth2SettingsException | InterruptedException e) {
+					if (messageCallback != null) {
+						messageCallback.onFinish(task, e.getMessage(), true);
+					}
+				}
 				break;
 			case MOVE:
 				try {
