@@ -419,7 +419,7 @@ public class MultiCloudDesktop extends JFrame {
 		actUpload = new UploadAction();
 		actDownload = new DownloadAction();
 		actMultiDownload = new MultiDownloadAction();
-		actCreateFolder = new CreateFolderAction();
+		actCreateFolder = new CreateFolderAction(this);
 		actRename = new RenameAction();
 		actDelete = new DeleteAction(this);
 		actCut = new CutAction(this);
@@ -747,6 +747,10 @@ public class MultiCloudDesktop extends JFrame {
 	public synchronized void actionCopy(FileInfo file) {
 		transferFile = file;
 		transferType = TransferType.COPY;
+	}
+
+	public void actionCreateFolder(String name) {
+		worker.createFolder(currentAccount, name, currentFolder);
 	}
 
 	public synchronized void actionCut(FileInfo file) {
