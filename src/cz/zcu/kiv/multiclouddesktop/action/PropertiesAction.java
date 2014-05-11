@@ -3,10 +3,8 @@ package cz.zcu.kiv.multiclouddesktop.action;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.Font;
-import java.awt.Frame;
 import java.awt.event.ActionEvent;
 
-import javax.swing.AbstractAction;
 import javax.swing.JComponent;
 import javax.swing.JLabel;
 import javax.swing.JList;
@@ -17,6 +15,7 @@ import cz.zcu.kiv.multicloud.filesystem.FileType;
 import cz.zcu.kiv.multicloud.json.FileInfo;
 import cz.zcu.kiv.multicloud.utils.Utils;
 import cz.zcu.kiv.multicloud.utils.Utils.UnitsFormat;
+import cz.zcu.kiv.multiclouddesktop.MultiCloudDesktop;
 
 /**
  * cz.zcu.kiv.multiclouddesktop.action/PropertiesAction.java			<br /><br />
@@ -27,7 +26,7 @@ import cz.zcu.kiv.multicloud.utils.Utils.UnitsFormat;
  * @version 1.0
  *
  */
-public class PropertiesAction extends AbstractAction {
+public class PropertiesAction extends CloudAction {
 
 	/** Serialization constant. */
 	private static final long serialVersionUID = -1190973332086544513L;
@@ -35,8 +34,6 @@ public class PropertiesAction extends AbstractAction {
 	/** Name of the action. */
 	public static final String ACT_NAME = "Properties";
 
-	/** Parent frame. */
-	private final Frame parent;
 	/** List of items. */
 	private final JList<FileInfo> list;
 
@@ -45,8 +42,8 @@ public class PropertiesAction extends AbstractAction {
 	 * @param parent Parent frame.
 	 * @param list List of items.
 	 */
-	public PropertiesAction(Frame parent, JList<FileInfo> list) {
-		this.parent = parent;
+	public PropertiesAction(MultiCloudDesktop parent, JList<FileInfo> list) {
+		super(parent);
 		this.list = list;
 		putValue(NAME, ACT_NAME);
 	}

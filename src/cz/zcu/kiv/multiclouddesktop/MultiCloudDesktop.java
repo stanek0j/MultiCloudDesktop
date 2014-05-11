@@ -254,6 +254,13 @@ public class MultiCloudDesktop extends JFrame {
 					switch (event.getKeyCode()) {
 					case KeyEvent.VK_ENTER:
 					case KeyEvent.VK_SPACE:
+						if (account != null) {
+							synchronized (lock) {
+								currentFolder = null;
+								currentPath.clear();
+							}
+							worker.listFolder(account.getName(), null, false, false);
+						}
 						break;
 					case KeyEvent.VK_DELETE:
 						break;
@@ -267,8 +274,8 @@ public class MultiCloudDesktop extends JFrame {
 			@Override
 			public void mouseClicked(MouseEvent event) {
 				AccountData account = accountList.getSelectedValue();
-				if (account != null) {
-					if (event.getButton() == MouseEvent.BUTTON1 && event.getClickCount() == 2) {
+				if (SwingUtilities.isLeftMouseButton(event) && event.getClickCount() == 2) {
+					if (account != null) {
 						synchronized (lock) {
 							currentFolder = null;
 							currentPath.clear();
@@ -308,6 +315,12 @@ public class MultiCloudDesktop extends JFrame {
 		dataList.addKeyListener(new KeyAdapter() {
 			@Override
 			public void keyPressed(KeyEvent event) {
+				FileInfo file = dataList.getSelectedValue();
+				if (event.getKeyCode() == KeyEvent.VK_SPACE || event.getKeyCode() == KeyEvent.VK_ENTER) {
+					if (file != null && file.getFileType() == FileType.FOLDER) {
+						worker.listFolder(currentAccount, file, false, false);
+					}
+				}
 			}
 		});
 		dataList.addMouseListener(new MouseAdapter() {
@@ -316,9 +329,7 @@ public class MultiCloudDesktop extends JFrame {
 				FileInfo file = dataList.getSelectedValue();
 				if (SwingUtilities.isLeftMouseButton(event) && event.getClickCount() == 2) {
 					if (file != null && file.getFileType() == FileType.FOLDER) {
-						synchronized (lock) {
-							worker.listFolder(currentAccount, file, false, false);
-						}
+						worker.listFolder(currentAccount, file, false, false);
 					}
 				}
 			}
@@ -399,7 +410,7 @@ public class MultiCloudDesktop extends JFrame {
 		worker.load(accounts);
 		refreshCurrentPath();
 
-		actRefresh = new RefreshAction();
+		actRefresh = new RefreshAction(this, accountList);
 		actUpload = new UploadAction();
 		actDownload = new DownloadAction();
 		actMultiDownload = new MultiDownloadAction();
@@ -409,7 +420,7 @@ public class MultiCloudDesktop extends JFrame {
 		actCut = new CutAction();
 		actCopy = new CopyAction();
 		actPaste = new PasteAction();
-		actProperties = new PropertiesAction(window, dataList);
+		actProperties = new PropertiesAction(this, dataList);
 
 		menuBar = new JMenuBar();
 		setJMenuBar(menuBar);
@@ -419,11 +430,9 @@ public class MultiCloudDesktop extends JFrame {
 		menuBar.add(mnFile);
 
 		mntmPreferences = new JMenuItem("Preferences");
-		mntmPreferences.setPreferredSize(new Dimension(127, 22));
 		mnFile.add(mntmPreferences);
 
 		mntmExit = new JMenuItem("Exit");
-		mntmExit.setPreferredSize(new Dimension(127, 22));
 		mntmExit.addActionListener(new ActionListener() {
 			/**
 			 * {@inheritDoc}
@@ -468,7 +477,6 @@ public class MultiCloudDesktop extends JFrame {
 				}
 			}
 		});
-		mntmAddAccount.setPreferredSize(new Dimension(127, 22));
 		mnAccount.add(mntmAddAccount);
 
 		mntmAuthorize = new JMenuItem("Authorize");
@@ -519,7 +527,6 @@ public class MultiCloudDesktop extends JFrame {
 				}
 			}
 		});
-		mntmAuthorize.setPreferredSize(new Dimension(127, 22));
 		mnAccount.add(mntmAuthorize);
 
 		mntmInformation = new JMenuItem("Information");
@@ -534,7 +541,6 @@ public class MultiCloudDesktop extends JFrame {
 				}
 			}
 		});
-		mntmInformation.setPreferredSize(new Dimension(127, 22));
 		mnAccount.add(mntmInformation);
 
 		mntmQuota = new JMenuItem("Quota");
@@ -549,7 +555,6 @@ public class MultiCloudDesktop extends JFrame {
 				}
 			}
 		});
-		mntmQuota.setPreferredSize(new Dimension(127, 22));
 		mnAccount.add(mntmQuota);
 
 		mntmRenameAccount = new JMenuItem("Rename");
@@ -583,7 +588,6 @@ public class MultiCloudDesktop extends JFrame {
 				}
 			}
 		});
-		mntmRenameAccount.setPreferredSize(new Dimension(127, 22));
 		mnAccount.add(mntmRenameAccount);
 
 		mntmRemoveAccount = new JMenuItem("Remove");
@@ -614,40 +618,24 @@ public class MultiCloudDesktop extends JFrame {
 				}
 			}
 		});
-		mntmRemoveAccount.setPreferredSize(new Dimension(127, 22));
 		mnAccount.add(mntmRemoveAccount);
 
 		mnOperation = new JMenu("Operation");
 		mnOperation.setMargin(new Insets(4, 4, 4, 4));
 		menuBar.add(mnOperation);
 
-		mntmRefresh = new JMenuItem("Refresh");
-		mntmRefresh.addActionListener(new ActionListener() {
-			@Override
-			public void actionPerformed(ActionEvent event) {
-				AccountData account = accountList.getSelectedValue();
-				if (account == null) {
-					JOptionPane.showMessageDialog(window, "No account selected.", "Refresh", JOptionPane.ERROR_MESSAGE);
-				} else {
-					synchronized (lock) {
-						worker.refresh(account.getName(), currentFolder);
-					}
-				}
-			}
-		});
-		mntmRefresh.setPreferredSize(new Dimension(127, 22));
+		mntmRefresh = new JMenuItem();
+		mntmRefresh.setAction(actRefresh);
 		mnOperation.add(mntmRefresh);
 
 		mnOperation.addSeparator();
 
 		mntmUpload = new JMenuItem();
 		mntmUpload.setAction(actUpload);
-		mntmUpload.setPreferredSize(new Dimension(127, 22));
 		mnOperation.add(mntmUpload);
 
 		mntmDownload = new JMenuItem();
 		mntmDownload.setAction(actDownload);
-		mntmDownload.setPreferredSize(new Dimension(127, 22));
 		mnOperation.add(mntmDownload);
 
 		mntmMultiDownload = new JMenuItem("Multi download");
@@ -659,115 +647,100 @@ public class MultiCloudDesktop extends JFrame {
 				System.out.println(dialog.isAborted());
 			}
 		});
-		mntmMultiDownload.setPreferredSize(new Dimension(127, 22));
 		mnOperation.add(mntmMultiDownload);
 
 		mnOperation.addSeparator();
 
 		mntmCreateFolder = new JMenuItem();
 		mntmCreateFolder.setAction(actCreateFolder);
-		mntmCreateFolder.setPreferredSize(new Dimension(127, 22));
 		mnOperation.add(mntmCreateFolder);
 
 		mntmRename = new JMenuItem();
 		mntmRename.setAction(actRename);
-		mntmRename.setPreferredSize(new Dimension(127, 22));
 		mnOperation.add(mntmRename);
 
 		mntmDelete = new JMenuItem();
 		mntmDelete.setAction(actDelete);
-		mntmDelete.setPreferredSize(new Dimension(127, 22));
 		mnOperation.add(mntmDelete);
 
 		mnOperation.addSeparator();
 
 		mntmCut = new JMenuItem();
 		mntmCut.setAction(actCut);
-		mntmCut.setPreferredSize(new Dimension(127, 22));
 		mnOperation.add(mntmCut);
 
 		mntmCopy = new JMenuItem();
 		mntmCopy.setAction(actCopy);
-		mntmCopy.setPreferredSize(new Dimension(127, 22));
 		mnOperation.add(mntmCopy);
 
 		mntmPaste = new JMenuItem();
 		mntmPaste.setAction(actPaste);
-		mntmPaste.setPreferredSize(new Dimension(127, 22));
 		mnOperation.add(mntmPaste);
 
 		mnOperation.addSeparator();
 
 		mntmProperties = new JMenuItem();
 		mntmProperties.setAction(actProperties);
-		mntmProperties.setPreferredSize(new Dimension(127, 22));
 		mnOperation.add(mntmProperties);
 
 		popupMenu = new JPopupMenu();
 
 		mntmRefreshPop = new JMenuItem();
 		mntmRefreshPop.setAction(actRefresh);
-		mntmRefreshPop.setPreferredSize(new Dimension(127, 22));
 		popupMenu.add(mntmRefreshPop);
 
 		popupMenu.addSeparator();
 
 		mntmUploadPop = new JMenuItem();
 		mntmUploadPop.setAction(actUpload);
-		mntmUploadPop.setPreferredSize(new Dimension(127, 22));
 		popupMenu.add(mntmUploadPop);
 
 		mntmDownloadPop = new JMenuItem();
 		mntmDownloadPop.setAction(actDownload);
-		mntmDownloadPop.setPreferredSize(new Dimension(127, 22));
 		popupMenu.add(mntmDownloadPop);
 
 		mntmMultiDownloadPop = new JMenuItem();
 		mntmMultiDownloadPop.setAction(actMultiDownload);
-		mntmMultiDownloadPop.setPreferredSize(new Dimension(127, 22));
 		popupMenu.add(mntmMultiDownloadPop);
 
 		popupMenu.addSeparator();
 
 		mntmCreateFolderPop = new JMenuItem();
 		mntmCreateFolderPop.setAction(actCreateFolder);
-		mntmCreateFolderPop.setPreferredSize(new Dimension(127, 22));
 		popupMenu.add(mntmCreateFolderPop);
 
 		mntmRenamePop = new JMenuItem();
 		mntmRenamePop.setAction(actRename);
-		mntmRenamePop.setPreferredSize(new Dimension(127, 22));
 		popupMenu.add(mntmRenamePop);
 
 		mntmDeletePop = new JMenuItem();
 		mntmDeletePop.setAction(actDelete);
-		mntmDeletePop.setPreferredSize(new Dimension(127, 22));
 		popupMenu.add(mntmDeletePop);
 
 		popupMenu.addSeparator();
 
 		mntmCutPop = new JMenuItem();
 		mntmCutPop.setAction(actCut);
-		mntmCutPop.setPreferredSize(new Dimension(127, 22));
 		popupMenu.add(mntmCutPop);
 
 		mntmCopyPop = new JMenuItem();
 		mntmCopyPop.setAction(actCopy);
-		mntmCopyPop.setPreferredSize(new Dimension(127, 22));
 		popupMenu.add(mntmCopyPop);
 
 		mntmPastePop = new JMenuItem();
 		mntmPastePop.setAction(actPaste);
-		mntmPastePop.setPreferredSize(new Dimension(127, 22));
 		popupMenu.add(mntmPastePop);
 
 		popupMenu.addSeparator();
 
 		mntmPropertiesPop = new JMenuItem();
 		mntmPropertiesPop.setAction(actProperties);
-		mntmPropertiesPop.setPreferredSize(new Dimension(127, 22));
 		popupMenu.add(mntmPropertiesPop);
 
+	}
+
+	public boolean actionRefresh(String accountName) {
+		return worker.refresh(accountName, currentFolder);
 	}
 
 	public String getCurrentAccount() {
