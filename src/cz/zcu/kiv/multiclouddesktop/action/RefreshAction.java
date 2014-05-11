@@ -3,8 +3,6 @@ package cz.zcu.kiv.multiclouddesktop.action;
 import java.awt.event.ActionEvent;
 import java.awt.event.KeyEvent;
 
-import javax.swing.JList;
-import javax.swing.JOptionPane;
 import javax.swing.KeyStroke;
 
 import cz.zcu.kiv.multiclouddesktop.MultiCloudDesktop;
@@ -27,17 +25,12 @@ public class RefreshAction extends CloudAction {
 	/** Name of the action. */
 	public static final String ACT_NAME = "Refresh";
 
-	/** List of accounts. */
-	private final JList<AccountData> list;
-
 	/**
 	 * Ctor with necessary parameters.
 	 * @param parent Parent frame.
-	 * @param list List of accounts.
 	 */
-	public RefreshAction(MultiCloudDesktop parent, JList<AccountData> list) {
+	public RefreshAction(MultiCloudDesktop parent) {
 		super(parent);
-		this.list = list;
 		putValue(NAME, ACT_NAME);
 		putValue(ACCELERATOR_KEY, KeyStroke.getKeyStroke(KeyEvent.VK_F5, 0));
 	}
@@ -47,9 +40,9 @@ public class RefreshAction extends CloudAction {
 	 */
 	@Override
 	public void actionPerformed(ActionEvent event) {
-		AccountData account = list.getSelectedValue();
+		AccountData account = parent.getAccountList().getSelectedValue();
 		if (account == null) {
-			JOptionPane.showMessageDialog(parent, "No account selected.", ACT_NAME, JOptionPane.ERROR_MESSAGE);
+			parent.getMessageCallback().displayError("No account selected.");
 		} else {
 			parent.actionRefresh(account.getName());
 		}

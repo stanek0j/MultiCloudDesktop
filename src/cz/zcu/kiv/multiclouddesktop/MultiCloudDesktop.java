@@ -60,6 +60,7 @@ import cz.zcu.kiv.multiclouddesktop.action.PasteAction;
 import cz.zcu.kiv.multiclouddesktop.action.PropertiesAction;
 import cz.zcu.kiv.multiclouddesktop.action.RefreshAction;
 import cz.zcu.kiv.multiclouddesktop.action.RenameAction;
+import cz.zcu.kiv.multiclouddesktop.action.TransferType;
 import cz.zcu.kiv.multiclouddesktop.action.UploadAction;
 import cz.zcu.kiv.multiclouddesktop.data.AccountData;
 import cz.zcu.kiv.multiclouddesktop.data.AccountDataListCellRenderer;
@@ -186,10 +187,13 @@ public class MultiCloudDesktop extends JFrame {
 	private String currentAccount;
 	private FileInfo currentFolder;
 	private FileInfo transferFile;
+	private TransferType transferType;
 	private final Object lock;
 
 	public MultiCloudDesktop() {
 		loader = MultiCloudDesktop.class.getClassLoader();
+		transferFile = null;
+		transferType = TransferType.NONE;
 		lock = new Object();
 
 		setMinimumSize(new Dimension(720, 480));
@@ -410,17 +414,17 @@ public class MultiCloudDesktop extends JFrame {
 		worker.load(accounts);
 		refreshCurrentPath();
 
-		actRefresh = new RefreshAction(this, accountList);
+		actRefresh = new RefreshAction(this);
 		actUpload = new UploadAction();
 		actDownload = new DownloadAction();
 		actMultiDownload = new MultiDownloadAction();
 		actCreateFolder = new CreateFolderAction();
 		actRename = new RenameAction();
 		actDelete = new DeleteAction();
-		actCut = new CutAction();
-		actCopy = new CopyAction();
-		actPaste = new PasteAction();
-		actProperties = new PropertiesAction(this, dataList);
+		actCut = new CutAction(this);
+		actCopy = new CopyAction(this);
+		actPaste = new PasteAction(this);
+		actProperties = new PropertiesAction(this);
 
 		menuBar = new JMenuBar();
 		setJMenuBar(menuBar);
@@ -739,8 +743,40 @@ public class MultiCloudDesktop extends JFrame {
 
 	}
 
+	public synchronized void actionCopy(FileInfo file) {
+		transferFile = file;
+		transferType = TransferType.COPY;
+	}
+
+	public synchronized void actionCut(FileInfo file) {
+		transferFile = file;
+		transferType = TransferType.MOVE;
+	}
+
+	public synchronized void actionPaste(String name) {
+		switch (transferType) {
+		case COPY:
+			messageCallback.displayMessage("Copying file...");
+			worker.copy(currentAccount, transferFile, currentFolder, name);
+			break;
+		case MOVE:
+			messageCallback.displayMessage("Moving file...");
+			worker.move(currentAccount, transferFile, currentFolder, name);
+			break;
+		case NONE:
+		default:
+			break;
+		}
+		transferFile = null;
+		transferType = TransferType.NONE;
+	}
+
 	public boolean actionRefresh(String accountName) {
 		return worker.refresh(accountName, currentFolder);
+	}
+
+	public JList<AccountData> getAccountList() {
+		return accountList;
 	}
 
 	public String getCurrentAccount() {
@@ -753,6 +789,14 @@ public class MultiCloudDesktop extends JFrame {
 		synchronized (lock) {
 			return currentFolder;
 		}
+	}
+
+	public JList<FileInfo> getDataList() {
+		return dataList;
+	}
+
+	public MessageCallback getMessageCallback() {
+		return messageCallback;
 	}
 
 	public FileInfo getParentFolder() {
@@ -779,6 +823,10 @@ public class MultiCloudDesktop extends JFrame {
 
 		}
 		return parent;
+	}
+
+	public synchronized FileInfo getTransferFile() {
+		return transferFile;
 	}
 
 	private void refreshCurrentPath() {

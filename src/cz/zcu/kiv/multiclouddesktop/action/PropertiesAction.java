@@ -7,7 +7,6 @@ import java.awt.event.ActionEvent;
 
 import javax.swing.JComponent;
 import javax.swing.JLabel;
-import javax.swing.JList;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 
@@ -34,17 +33,12 @@ public class PropertiesAction extends CloudAction {
 	/** Name of the action. */
 	public static final String ACT_NAME = "Properties";
 
-	/** List of items. */
-	private final JList<FileInfo> list;
-
 	/**
 	 * Ctor with necessary parameters.
 	 * @param parent Parent frame.
-	 * @param list List of items.
 	 */
-	public PropertiesAction(MultiCloudDesktop parent, JList<FileInfo> list) {
+	public PropertiesAction(MultiCloudDesktop parent) {
 		super(parent);
-		this.list = list;
 		putValue(NAME, ACT_NAME);
 	}
 
@@ -53,7 +47,7 @@ public class PropertiesAction extends CloudAction {
 	 */
 	@Override
 	public void actionPerformed(ActionEvent event) {
-		FileInfo f = list.getSelectedValue();
+		FileInfo f = parent.getDataList().getSelectedValue();
 		if (f == null) {
 			JOptionPane.showMessageDialog(parent, "No item selected.", ACT_NAME, JOptionPane.ERROR_MESSAGE);
 		} else {

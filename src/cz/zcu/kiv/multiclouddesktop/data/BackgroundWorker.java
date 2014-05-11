@@ -92,6 +92,37 @@ public class BackgroundWorker extends Thread {
 		btnAbort.setEnabled(true);
 	}
 
+	public boolean copy(String accounName, FileInfo file, FileInfo destination, String destinationName) {
+		boolean ready = false;
+		synchronized (this) {
+			if (task == BackgroundTask.NONE) {
+				task = BackgroundTask.COPY;
+				account = accounName;
+				src = file;
+				dst = destination;
+				dstName = destinationName;
+				ready = true;
+				notifyAll();
+			}
+		}
+		return ready;
+	}
+
+	public boolean delete(String accountName, FileInfo file, FileInfo folder) {
+		boolean ready = false;
+		synchronized (this) {
+			if (task == BackgroundTask.NONE) {
+				task = BackgroundTask.DELETE;
+				account = accountName;
+				src = file;
+				dst = folder;
+				ready = true;
+				notifyAll();
+			}
+		}
+		return ready;
+	}
+
 	private synchronized void finishOperation() {
 		progressBar.setIndeterminate(false);
 		btnAbort.setEnabled(false);
@@ -119,6 +150,22 @@ public class BackgroundWorker extends Thread {
 			if (task == BackgroundTask.NONE) {
 				task = BackgroundTask.LOAD;
 				accounts = accountNames;
+				ready = true;
+				notifyAll();
+			}
+		}
+		return ready;
+	}
+
+	public boolean move(String accounName, FileInfo file, FileInfo destination, String destinationName) {
+		boolean ready = false;
+		synchronized (this) {
+			if (task == BackgroundTask.NONE) {
+				task = BackgroundTask.MOVE;
+				account = accounName;
+				src = file;
+				dst = destination;
+				dstName = destinationName;
 				ready = true;
 				notifyAll();
 			}
@@ -238,9 +285,6 @@ public class BackgroundWorker extends Thread {
 				try {
 					FileInfo list = cloud.listFolder(account, src, showDeleted, showShared);
 					MultiCloudDesktop.getWindow().setCurrentAccount(account);
-					if (messageCallback != null) {
-						messageCallback.onFinish(task, "Folder listed.", false);
-					}
 					MultiCloudDesktop.getWindow().setCurrentFolder(list);
 					if (listCallback != null) {
 						listCallback.onFinish(task, account, list);
@@ -256,10 +300,64 @@ public class BackgroundWorker extends Thread {
 			case RENAME:
 				break;
 			case MOVE:
+				try {
+					cloud.move(account, src, dst, dstName);
+					AccountQuota quota = cloud.accountQuota(account);
+					FileInfo list = cloud.listFolder(account, dst, showDeleted, showShared);
+					if (messageCallback != null) {
+						messageCallback.onFinish(task, "File moved.", false);
+					}
+					if (quotaCallback != null) {
+						quotaCallback.onFinish(task, account, quota);
+					}
+					if (listCallback != null) {
+						listCallback.onFinish(task, account, list);
+					}
+				} catch (MultiCloudException | OAuth2SettingsException | InterruptedException e) {
+					if (messageCallback != null) {
+						messageCallback.onFinish(task, e.getMessage(), true);
+					}
+				}
 				break;
 			case COPY:
+				try {
+					cloud.copy(account, src, dst, dstName);
+					AccountQuota quota = cloud.accountQuota(account);
+					FileInfo list = cloud.listFolder(account, dst, showDeleted, showShared);
+					if (messageCallback != null) {
+						messageCallback.onFinish(task, "File copied.", false);
+					}
+					if (quotaCallback != null) {
+						quotaCallback.onFinish(task, account, quota);
+					}
+					if (listCallback != null) {
+						listCallback.onFinish(task, account, list);
+					}
+				} catch (MultiCloudException | OAuth2SettingsException | InterruptedException e) {
+					if (messageCallback != null) {
+						messageCallback.onFinish(task, e.getMessage(), true);
+					}
+				}
 				break;
 			case DELETE:
+				try {
+					cloud.delete(account, src);
+					AccountQuota quota = cloud.accountQuota(account);
+					FileInfo list = cloud.listFolder(account, dst, showDeleted, showShared);
+					if (messageCallback != null) {
+						messageCallback.onFinish(task, "Deleted.", false);
+					}
+					if (quotaCallback != null) {
+						quotaCallback.onFinish(task, account, quota);
+					}
+					if (listCallback != null) {
+						listCallback.onFinish(task, account, list);
+					}
+				} catch (MultiCloudException | OAuth2SettingsException | InterruptedException e) {
+					if (messageCallback != null) {
+						messageCallback.onFinish(task, e.getMessage(), true);
+					}
+				}
 				break;
 			case NONE:
 			default:
