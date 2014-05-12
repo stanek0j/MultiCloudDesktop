@@ -16,6 +16,9 @@ public enum BackgroundTask {
 	REFRESH,				// consists of the QUOTA and LIST_FOLDER operation
 	INFO,
 	QUOTA,
+	UPLOAD,
+	DOWNLOAD,
+	MULTI_DOWNLOAD,
 	LIST_FOLDER,
 	CREATE_FOLDER,			// operation followed by the REFRESH
 	RENAME,					// operation followed by the REFRESH

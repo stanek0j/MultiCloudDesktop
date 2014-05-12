@@ -37,7 +37,6 @@ public class ProgressDialog extends JDialog {
 	 */
 	public ProgressDialog(Frame parent, JComponent[] content, String title) {
 		setTitle(title);
-		setAlwaysOnTop(true);
 		setDefaultCloseOperation(JDialog.DO_NOTHING_ON_CLOSE);
 		setLayout(new BoxLayout(getContentPane(), BoxLayout.PAGE_AXIS));
 		setResizable(false);

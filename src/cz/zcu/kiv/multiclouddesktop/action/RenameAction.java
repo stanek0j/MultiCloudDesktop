@@ -10,6 +10,15 @@ import cz.zcu.kiv.multicloud.json.FileInfo;
 import cz.zcu.kiv.multiclouddesktop.MultiCloudDesktop;
 import cz.zcu.kiv.multiclouddesktop.dialog.RenameDialog;
 
+/**
+ * cz.zcu.kiv.multiclouddesktop.action/RenameAction.java			<br /><br />
+ *
+ * Action for renaming file or folder.
+ *
+ * @author Jaromír Staněk
+ * @version 1.0
+ *
+ */
 public class RenameAction extends CloudAction {
 
 	/** Serialization constant. */

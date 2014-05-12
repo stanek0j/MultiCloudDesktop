@@ -1,5 +1,7 @@
 package cz.zcu.kiv.multiclouddesktop.data;
 
+import java.io.File;
+
 import javax.swing.JButton;
 import javax.swing.JProgressBar;
 
@@ -10,6 +12,7 @@ import cz.zcu.kiv.multicloud.json.AccountQuota;
 import cz.zcu.kiv.multicloud.json.FileInfo;
 import cz.zcu.kiv.multicloud.oauth2.OAuth2SettingsException;
 import cz.zcu.kiv.multiclouddesktop.MultiCloudDesktop;
+import cz.zcu.kiv.multiclouddesktop.dialog.ProgressDialog;
 
 public class BackgroundWorker extends Thread {
 
@@ -23,11 +26,13 @@ public class BackgroundWorker extends Thread {
 	private final BackgroundCallback<Boolean> messageCallback;
 
 	private BackgroundTask task;
+	private ProgressDialog dialog;
 	private String account;
 	private String[] accounts;
 	private FileInfo src;
 	private FileInfo dst;
 	private String dstName;
+	private File localFile;
 	private boolean showDeleted;
 	private boolean showShared;
 	/** If the thread should terminate. */
@@ -57,6 +62,7 @@ public class BackgroundWorker extends Thread {
 	public synchronized void abort() {
 		if (task != BackgroundTask.NONE) {
 			cloud.abortOperation();
+			dialog = null;
 			aborted = true;
 		}
 	}
@@ -233,7 +239,7 @@ public class BackgroundWorker extends Thread {
 				}
 			}
 			System.out.println("worker working on " + task);
-			if (task != BackgroundTask.NONE) {
+			if (task != BackgroundTask.NONE && dialog == null) {
 				beginOperation();
 			}
 			switch (task) {
@@ -306,6 +312,36 @@ public class BackgroundWorker extends Thread {
 						messageCallback.onFinish(task, e.getMessage(), true);
 					}
 				}
+				break;
+			case UPLOAD:
+				try {
+					cloud.uploadFile(account, dst, localFile.getName(), true, localFile);
+					if (dialog != null) {
+						synchronized (this) {
+							dialog = null;
+						}
+					}
+					if (messageCallback != null) {
+						messageCallback.onFinish(task, "Upload finished.", false);
+					}
+					beginOperation();
+					AccountQuota quota = cloud.accountQuota(account);
+					FileInfo list = cloud.listFolder(account, dst, showDeleted, showShared);
+					if (quotaCallback != null) {
+						quotaCallback.onFinish(task, account, quota);
+					}
+					if (listCallback != null) {
+						listCallback.onFinish(task, account, list);
+					}
+				} catch (MultiCloudException | OAuth2SettingsException | InterruptedException e) {
+					if (messageCallback != null) {
+						messageCallback.onFinish(task, e.getMessage(), true);
+					}
+				}
+				break;
+			case DOWNLOAD:
+				break;
+			case MULTI_DOWNLOAD:
 				break;
 			case LIST_FOLDER:
 				try {
@@ -425,11 +461,12 @@ public class BackgroundWorker extends Thread {
 			default:
 				break;
 			}
-			if (task != BackgroundTask.NONE) {
+			if (task != BackgroundTask.NONE && dialog == null) {
 				finishOperation();
 			}
 			synchronized (this) {
 				task = BackgroundTask.NONE;
+				dialog = null;
 				aborted = false;
 				System.out.println("worker done");
 			}
@@ -447,6 +484,22 @@ public class BackgroundWorker extends Thread {
 		}
 		terminate = true;
 		interrupt();
+	}
+
+	public boolean upload(String accountName, File file, FileInfo folder, ProgressDialog progressDialog) {
+		boolean ready = false;
+		synchronized (this) {
+			if (task == BackgroundTask.NONE) {
+				task = BackgroundTask.UPLOAD;
+				dialog = progressDialog;
+				account = accountName;
+				localFile = file;
+				dst = folder;
+				ready = true;
+				notifyAll();
+			}
+		}
+		return ready;
 	}
 
 }

@@ -13,6 +13,7 @@ import java.awt.event.KeyEvent;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.awt.image.BufferedImage;
+import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.LinkedList;
@@ -416,7 +417,7 @@ public class MultiCloudDesktop extends JFrame {
 		refreshCurrentPath();
 
 		actRefresh = new RefreshAction(this);
-		actUpload = new UploadAction();
+		actUpload = new UploadAction(this, null);
 		actDownload = new DownloadAction();
 		actMultiDownload = new MultiDownloadAction();
 		actCreateFolder = new CreateFolderAction(this);
@@ -744,6 +745,10 @@ public class MultiCloudDesktop extends JFrame {
 
 	}
 
+	public synchronized void actionAbort() {
+		worker.abort();
+	}
+
 	public synchronized void actionCopy(FileInfo file) {
 		transferFile = file;
 		transferType = TransferType.COPY;
@@ -794,6 +799,11 @@ public class MultiCloudDesktop extends JFrame {
 		worker.rename(currentAccount, name, file, currentFolder);
 	}
 
+	public synchronized void actionUpload(File file, ProgressDialog dialog) {
+		progressListener.setDialog(dialog);
+		worker.upload(currentAccount, file, currentFolder, dialog);
+	}
+
 	public JList<AccountData> getAccountList() {
 		return accountList;
 	}
@@ -842,6 +852,10 @@ public class MultiCloudDesktop extends JFrame {
 
 		}
 		return parent;
+	}
+
+	public DialogProgressListener getProgressListener() {
+		return progressListener;
 	}
 
 	public synchronized FileInfo getTransferFile() {

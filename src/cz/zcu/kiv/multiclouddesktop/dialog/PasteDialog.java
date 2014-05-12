@@ -129,7 +129,6 @@ public class PasteDialog extends JDialog {
 		buttonPanel.add(btnCancel);
 
 		setTitle(title);
-		setAlwaysOnTop(true);
 		setDefaultCloseOperation(JDialog.DISPOSE_ON_CLOSE);
 		setLayout(new BoxLayout(getContentPane(), BoxLayout.PAGE_AXIS));
 		setResizable(false);

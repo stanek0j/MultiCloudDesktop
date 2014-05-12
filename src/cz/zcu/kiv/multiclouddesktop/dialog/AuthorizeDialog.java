@@ -120,7 +120,6 @@ public class AuthorizeDialog extends JDialog {
 		};
 
 		setTitle(title);
-		setAlwaysOnTop(true);
 		setDefaultCloseOperation(JDialog.DO_NOTHING_ON_CLOSE);
 		setLayout(new BoxLayout(getContentPane(), BoxLayout.PAGE_AXIS));
 		setResizable(false);
