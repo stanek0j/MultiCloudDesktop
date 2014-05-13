@@ -30,9 +30,11 @@ public class BackgroundWorker extends Thread {
 	private String account;
 	private String[] accounts;
 	private FileInfo src;
+	private FileInfo[] srcs;
 	private FileInfo dst;
 	private String dstName;
 	private File localFile;
+	private boolean overwrite;
 	private boolean showDeleted;
 	private boolean showShared;
 	/** If the thread should terminate. */
@@ -144,6 +146,23 @@ public class BackgroundWorker extends Thread {
 		return ready;
 	}
 
+	public boolean download(String accountName, FileInfo file, File target, boolean overwriteTarget, ProgressDialog progressDialog) {
+		boolean ready = false;
+		synchronized (this) {
+			if (task == BackgroundTask.NONE) {
+				task = BackgroundTask.DOWNLOAD;
+				dialog = progressDialog;
+				account = accountName;
+				src = file;
+				localFile = target;
+				overwrite = overwriteTarget;
+				ready = true;
+				notifyAll();
+			}
+		}
+		return ready;
+	}
+
 	private synchronized void finishOperation() {
 		progressBar.setIndeterminate(false);
 		btnAbort.setEnabled(false);
@@ -185,6 +204,23 @@ public class BackgroundWorker extends Thread {
 				src = file;
 				dst = destination;
 				dstName = destinationName;
+				ready = true;
+				notifyAll();
+			}
+		}
+		return ready;
+	}
+
+	public boolean multiDownload(String[] accountNames, FileInfo[] files, File target, boolean overwriteTarget, ProgressDialog progressDialog) {
+		boolean ready = false;
+		synchronized (this) {
+			if (task == BackgroundTask.NONE) {
+				task = BackgroundTask.MULTI_DOWNLOAD;
+				dialog = progressDialog;
+				accounts = accountNames;
+				srcs = files;
+				localFile = target;
+				overwrite = overwriteTarget;
 				ready = true;
 				notifyAll();
 			}
@@ -315,14 +351,16 @@ public class BackgroundWorker extends Thread {
 				break;
 			case UPLOAD:
 				try {
+					long start = System.currentTimeMillis();
 					cloud.uploadFile(account, dst, localFile.getName(), true, localFile);
+					double time = (System.currentTimeMillis() - start) / 1000.0;
 					if (dialog != null) {
 						synchronized (this) {
 							dialog = null;
 						}
 					}
 					if (messageCallback != null) {
-						messageCallback.onFinish(task, "Upload finished.", false);
+						messageCallback.onFinish(task, "Upload finished in " + String.format("%.2f", time) + " seconds.", false);
 					}
 					beginOperation();
 					AccountQuota quota = cloud.accountQuota(account);
@@ -340,8 +378,35 @@ public class BackgroundWorker extends Thread {
 				}
 				break;
 			case DOWNLOAD:
+				try {
+					long start = System.currentTimeMillis();
+					cloud.downloadFile(account, src, localFile, overwrite);
+					double time = (System.currentTimeMillis() - start) / 1000.0;
+					if (messageCallback != null) {
+						messageCallback.onFinish(task, "Download finished in " + String.format("%.2f", time) + " seconds.", false);
+					}
+				} catch (MultiCloudException | OAuth2SettingsException | InterruptedException e) {
+					if (messageCallback != null) {
+						messageCallback.onFinish(task, e.getMessage(), true);
+					}
+				}
 				break;
 			case MULTI_DOWNLOAD:
+				try {
+					for (int i = 0; i < accounts.length; i++) {
+						cloud.addDownloadSource(accounts[i], srcs[i]);
+					}
+					long start = System.currentTimeMillis();
+					cloud.downloadMultiFile(localFile, overwrite);
+					double time = (System.currentTimeMillis() - start) / 1000.0;
+					if (messageCallback != null) {
+						messageCallback.onFinish(task, "Download finished in " + String.format("%.2f", time) + " seconds.", false);
+					}
+				} catch (MultiCloudException | OAuth2SettingsException | InterruptedException e) {
+					if (messageCallback != null) {
+						messageCallback.onFinish(task, e.getMessage(), true);
+					}
+				}
 				break;
 			case LIST_FOLDER:
 				try {

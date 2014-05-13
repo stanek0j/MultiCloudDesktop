@@ -53,7 +53,7 @@ public class DialogProgressListener extends ProgressListener {
 	 */
 	public DialogProgressListener(long refreshInterval) {
 		super(refreshInterval);
-		lblSize = new JLabel(" ");
+		lblSize = new JLabel("Initializing...");
 		lblSize.setBorder(new EmptyBorder(12, 12, 0, 12));
 		lblPercent = new JLabel(" ", SwingConstants.RIGHT);
 		lblPercent.setBorder(new EmptyBorder(12, 12, 0, 12));
@@ -76,8 +76,8 @@ public class DialogProgressListener extends ProgressListener {
 	 * @return Array of dialog components.
 	 */
 	public JComponent[] getComponents() {
-		lblSize.setText(" ");
-		lblPercent.setText(" ");
+		lblSize.setText("Initializing...");
+		lblPercent.setText(null);
 		progressBar.setValue(0);
 		return new JComponent[] {
 				labelPanel,

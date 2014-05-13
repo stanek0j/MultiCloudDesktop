@@ -418,7 +418,7 @@ public class MultiCloudDesktop extends JFrame {
 
 		actRefresh = new RefreshAction(this);
 		actUpload = new UploadAction(this, null);
-		actDownload = new DownloadAction();
+		actDownload = new DownloadAction(this, null);
 		actMultiDownload = new MultiDownloadAction();
 		actCreateFolder = new CreateFolderAction(this);
 		actRename = new RenameAction(this);
@@ -765,6 +765,25 @@ public class MultiCloudDesktop extends JFrame {
 
 	public synchronized void actionDelete(FileInfo file) {
 		worker.delete(currentAccount, file, currentFolder);
+	}
+
+	public synchronized void actionDownload(FileInfo file, File target, boolean overwrite, ProgressDialog dialog) {
+		progressListener.setDialog(dialog);
+		worker.download(currentAccount, file, target, overwrite, dialog);
+		/*
+		String[] accounts = new String[5];
+		FileInfo[] files = new FileInfo[5];
+		for (int i = 0; i < 5; i++) {
+			accounts[i] = currentAccount;
+			files[i] = file;
+		}
+		worker.multiDownload(accounts, files, target, overwrite, dialog);
+		 */
+	}
+
+	public synchronized void actionMultiDownload(FileInfo file, File target, boolean overwrite, ProgressDialog dialog) {
+		progressListener.setDialog(dialog);
+		worker.download(currentAccount, file, target, overwrite, dialog);
 	}
 
 	public synchronized void actionPaste(String name) {
