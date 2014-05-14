@@ -35,9 +35,11 @@ import javax.swing.JPanel;
 import javax.swing.JPopupMenu;
 import javax.swing.JProgressBar;
 import javax.swing.JScrollPane;
+import javax.swing.KeyStroke;
 import javax.swing.ListSelectionModel;
 import javax.swing.ScrollPaneConstants;
 import javax.swing.SwingUtilities;
+import javax.swing.TransferHandler;
 import javax.swing.UIManager;
 import javax.swing.UnsupportedLookAndFeelException;
 import javax.swing.border.EmptyBorder;
@@ -207,7 +209,9 @@ public class MultiCloudDesktop extends JFrame {
 
 		ImageIcon icnAbort = null;
 		ImageIcon icnFolder = null;
+		ImageIcon icnFolderSmall = null;
 		ImageIcon icnFile = null;
+		ImageIcon icnFileSmall = null;
 		try {
 			List<BufferedImage> images = new ArrayList<>();
 			images.add(ImageIO.read(loader.getResourceAsStream("cloud_16.png")));
@@ -223,7 +227,9 @@ public class MultiCloudDesktop extends JFrame {
 			setIconImages(images);
 			icnAbort = new ImageIcon(ImageIO.read(loader.getResourceAsStream("abort.png")));
 			icnFolder = new ImageIcon(ImageIO.read(loader.getResourceAsStream("folder.png")));
+			icnFolderSmall = new ImageIcon(ImageIO.read(loader.getResourceAsStream("folder_small.png")));
 			icnFile = new ImageIcon(ImageIO.read(loader.getResourceAsStream("file.png")));
+			icnFileSmall = new ImageIcon(ImageIO.read(loader.getResourceAsStream("file_small.png")));
 		} catch (IOException e1) {
 			e1.printStackTrace();
 		}
@@ -360,7 +366,7 @@ public class MultiCloudDesktop extends JFrame {
 			dataList.setFixedCellWidth(80);
 			dataList.setFixedCellHeight(96);
 		}
-		dataRenderer = new FileInfoListCellRenderer(icnFolder, icnFile);
+		dataRenderer = new FileInfoListCellRenderer(icnFolder, icnFolderSmall, icnFile, icnFileSmall);
 		dataList.setVisibleRowCount(-1);
 		dataScrollPane.setViewportView(dataList);
 		dataList.setCellRenderer(dataRenderer);
@@ -427,6 +433,13 @@ public class MultiCloudDesktop extends JFrame {
 		actCopy = new CopyAction(this);
 		actPaste = new PasteAction(this);
 		actProperties = new PropertiesAction(this);
+
+		dataList.getActionMap().put(TransferHandler.getCutAction().getValue(CutAction.ACT_NAME), TransferHandler.getCutAction());
+		dataList.getInputMap().put(KeyStroke.getKeyStroke(KeyEvent.VK_X, ActionEvent.CTRL_MASK), TransferHandler.getCutAction());
+		dataList.getActionMap().put(TransferHandler.getCopyAction().getValue(CopyAction.ACT_NAME), TransferHandler.getCopyAction());
+		dataList.getInputMap().put(KeyStroke.getKeyStroke(KeyEvent.VK_C, ActionEvent.CTRL_MASK), TransferHandler.getCopyAction());
+		dataList.getActionMap().put(TransferHandler.getPasteAction().getValue(PasteAction.ACT_NAME), TransferHandler.getPasteAction());
+		dataList.getInputMap().put(KeyStroke.getKeyStroke(KeyEvent.VK_V, ActionEvent.CTRL_MASK), TransferHandler.getPasteAction());
 
 		menuBar = new JMenuBar();
 		setJMenuBar(menuBar);
@@ -644,15 +657,8 @@ public class MultiCloudDesktop extends JFrame {
 		mntmDownload.setAction(actDownload);
 		mnOperation.add(mntmDownload);
 
-		mntmMultiDownload = new JMenuItem("Multi download");
-		mntmMultiDownload.addActionListener(new ActionListener() {
-			@Override
-			public void actionPerformed(ActionEvent event) {
-				ProgressDialog dialog = new ProgressDialog(window, progressListener.getComponents(), "Multi download");
-				dialog.setVisible(true);
-				System.out.println(dialog.isAborted());
-			}
-		});
+		mntmMultiDownload = new JMenuItem();
+		mntmMultiDownload.setAction(actMultiDownload);
 		mnOperation.add(mntmMultiDownload);
 
 		mnOperation.addSeparator();

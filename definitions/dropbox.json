@@ -193,5 +193,21 @@
 			"size":"bytes",
 			"mimeType":"mime_type"
 		}
+	},
+	"search_request":
+	{
+		"uri":"https://api.dropbox.com/1/search/dropbox/",
+		"method":"GET",
+		"params":
+		{
+			"query":"<query>",
+			"include_deleted":"<deleted>"
+		},
+		"mapping":
+		{
+			"deleted":"is_deleted",
+			"size":"bytes",
+			"mimeType":"mime_type"
+		}
 	}
 }

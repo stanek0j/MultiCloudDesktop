@@ -48,6 +48,20 @@ public class FileInfoListCellRenderer implements ListCellRenderer<FileInfo> {
 	}
 
 	/**
+	 * Ctor with icons.
+	 * @param folderIcon Folder icon.
+	 * @param folderIconSmall Small folder icon.
+	 * @param fileIcon File icon.
+	 * @param fileIconSmall Small file icon.
+	 */
+	public FileInfoListCellRenderer(ImageIcon folderIcon, ImageIcon folderIconSmall, ImageIcon fileIcon, ImageIcon fileIconSmall) {
+		this.folderIcon = folderIcon;
+		this.folderIconSmall = folderIconSmall;
+		this.fileIcon = fileIcon;
+		this.fileIconSmall = fileIconSmall;
+	}
+
+	/**
 	 * {@inheritDoc}
 	 */
 	@Override

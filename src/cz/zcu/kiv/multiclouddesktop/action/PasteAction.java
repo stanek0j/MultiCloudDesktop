@@ -5,7 +5,6 @@ import java.awt.event.KeyEvent;
 
 import javax.swing.JOptionPane;
 import javax.swing.KeyStroke;
-import javax.swing.TransferHandler;
 
 import cz.zcu.kiv.multicloud.json.FileInfo;
 import cz.zcu.kiv.multiclouddesktop.MultiCloudDesktop;
@@ -36,8 +35,6 @@ public class PasteAction extends CloudAction {
 		super(parent);
 		putValue(NAME, ACT_NAME);
 		putValue(ACCELERATOR_KEY, KeyStroke.getKeyStroke(KeyEvent.VK_V, ActionEvent.CTRL_MASK));
-		parent.getDataList().getActionMap().put(TransferHandler.getPasteAction().getValue(NAME), TransferHandler.getPasteAction());
-		parent.getDataList().getInputMap().put(KeyStroke.getKeyStroke(KeyEvent.VK_V, ActionEvent.CTRL_MASK), TransferHandler.getPasteAction());
 	}
 
 	/**
