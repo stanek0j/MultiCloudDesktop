@@ -58,6 +58,7 @@ import cz.zcu.kiv.multiclouddesktop.action.CreateFolderAction;
 import cz.zcu.kiv.multiclouddesktop.action.CutAction;
 import cz.zcu.kiv.multiclouddesktop.action.DeleteAction;
 import cz.zcu.kiv.multiclouddesktop.action.DownloadAction;
+import cz.zcu.kiv.multiclouddesktop.action.FindAction;
 import cz.zcu.kiv.multiclouddesktop.action.MultiDownloadAction;
 import cz.zcu.kiv.multiclouddesktop.action.PasteAction;
 import cz.zcu.kiv.multiclouddesktop.action.PropertiesAction;
@@ -74,6 +75,7 @@ import cz.zcu.kiv.multiclouddesktop.data.BackgroundWorker;
 import cz.zcu.kiv.multiclouddesktop.data.FileInfoCallback;
 import cz.zcu.kiv.multiclouddesktop.data.FileInfoListCellRenderer;
 import cz.zcu.kiv.multiclouddesktop.data.MessageCallback;
+import cz.zcu.kiv.multiclouddesktop.data.SearchCallback;
 import cz.zcu.kiv.multiclouddesktop.dialog.AccountDialog;
 import cz.zcu.kiv.multiclouddesktop.dialog.AuthorizeDialog;
 import cz.zcu.kiv.multiclouddesktop.dialog.DialogProgressListener;
@@ -153,6 +155,7 @@ public class MultiCloudDesktop extends JFrame {
 
 	private final JPopupMenu popupMenu;
 	private final JMenuItem mntmRefreshPop;
+	private final JMenuItem mntmFindPop;
 	private final JMenuItem mntmUploadPop;
 	private final JMenuItem mntmDownloadPop;
 	private final JMenuItem mntmMultiDownloadPop;
@@ -165,6 +168,7 @@ public class MultiCloudDesktop extends JFrame {
 	private final JMenuItem mntmPropertiesPop;
 
 	private final Action actRefresh;
+	private final Action actFind;
 	private final Action actUpload;
 	private final Action actDownload;
 	private final Action actMultiDownload;
@@ -193,6 +197,7 @@ public class MultiCloudDesktop extends JFrame {
 	private FileInfo transferFile;
 	private TransferType transferType;
 	private final Object lock;
+	private final JMenuItem mntmFind;
 
 	public MultiCloudDesktop() {
 		loader = MultiCloudDesktop.class.getClassLoader();
@@ -423,9 +428,10 @@ public class MultiCloudDesktop extends JFrame {
 		refreshCurrentPath();
 
 		actRefresh = new RefreshAction(this);
+		actFind = new FindAction(this, icnFolderSmall, icnFileSmall);
 		actUpload = new UploadAction(this, null);
 		actDownload = new DownloadAction(this, null);
-		actMultiDownload = new MultiDownloadAction();
+		actMultiDownload = new MultiDownloadAction(this, null, icnFolderSmall, icnFileSmall);
 		actCreateFolder = new CreateFolderAction(this);
 		actRename = new RenameAction(this);
 		actDelete = new DeleteAction(this);
@@ -647,6 +653,10 @@ public class MultiCloudDesktop extends JFrame {
 		mntmRefresh.setAction(actRefresh);
 		mnOperation.add(mntmRefresh);
 
+		mntmFind = new JMenuItem();
+		mntmFind.setAction(actFind);
+		mnOperation.add(mntmFind);
+
 		mnOperation.addSeparator();
 
 		mntmUpload = new JMenuItem();
@@ -700,6 +710,10 @@ public class MultiCloudDesktop extends JFrame {
 		mntmRefreshPop = new JMenuItem();
 		mntmRefreshPop.setAction(actRefresh);
 		popupMenu.add(mntmRefreshPop);
+
+		mntmFindPop = new JMenuItem();
+		mntmFindPop.setAction(actFind);
+		popupMenu.add(mntmFindPop);
 
 		popupMenu.addSeparator();
 
@@ -787,9 +801,9 @@ public class MultiCloudDesktop extends JFrame {
 		 */
 	}
 
-	public synchronized void actionMultiDownload(FileInfo file, File target, boolean overwrite, ProgressDialog dialog) {
+	public synchronized void actionMultiDownload(String[] accounts, FileInfo[] files, File target, boolean overwrite, ProgressDialog dialog) {
 		progressListener.setDialog(dialog);
-		worker.download(currentAccount, file, target, overwrite, dialog);
+		worker.multiDownload(accounts, files, target, overwrite, dialog);
 	}
 
 	public synchronized void actionPaste(String name) {
@@ -810,18 +824,22 @@ public class MultiCloudDesktop extends JFrame {
 		transferType = TransferType.NONE;
 	}
 
-	public synchronized boolean actionRefresh(String accountName) {
+	public synchronized void actionRefresh(String accountName) {
 		synchronized (lock) {
 			if (accountName != null && !accountName.equals(currentAccount)) {
 				currentFolder = null;
 				currentPath.clear();
 			}
 		}
-		return worker.refresh(accountName, currentFolder);
+		worker.refresh(accountName, currentFolder);
 	}
 
 	public synchronized void actionRename(String name, FileInfo file) {
 		worker.rename(currentAccount, name, file, currentFolder);
+	}
+
+	public synchronized boolean actionSearch(String account, String query, SearchCallback callback) {
+		return worker.search(account, query, callback);
 	}
 
 	public synchronized void actionUpload(File file, ProgressDialog dialog) {
@@ -831,6 +849,14 @@ public class MultiCloudDesktop extends JFrame {
 
 	public JList<AccountData> getAccountList() {
 		return accountList;
+	}
+
+	public AccountManager getAccountManager() {
+		return accountManager;
+	}
+
+	public CloudManager getCloudManager() {
+		return cloudManager;
 	}
 
 	public String getCurrentAccount() {

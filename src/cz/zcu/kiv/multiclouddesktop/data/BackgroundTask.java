@@ -20,10 +20,11 @@ public enum BackgroundTask {
 	DOWNLOAD,
 	MULTI_DOWNLOAD,
 	LIST_FOLDER,
-	CREATE_FOLDER,			// operation followed by the REFRESH
-	RENAME,					// operation followed by the REFRESH
-	MOVE,					// operation followed by the REFRESH
-	COPY,					// operation followed by the REFRESH
-	DELETE					// operation followed by the REFRESH
+	CREATE_FOLDER,
+	RENAME,
+	MOVE,
+	COPY,
+	DELETE,
+	SEARCH
 
 }

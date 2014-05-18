@@ -25,6 +25,8 @@ public class AccountData {
 	private boolean authorized;
 	/** If the account is listed. */
 	private boolean listed;
+	/** If the file is matched for this account. */
+	private boolean matched;
 
 	/**
 	 * Returns the cloud storage service provider for the account.
@@ -83,6 +85,14 @@ public class AccountData {
 	}
 
 	/**
+	 * Returns if the file is matched for this account.
+	 * @return If the file is matched for this account.
+	 */
+	public boolean isMatched() {
+		return matched;
+	}
+
+	/**
 	 * Sets if the account is authorized.
 	 * @param authorized If the account is authorized.
 	 */
@@ -115,6 +125,14 @@ public class AccountData {
 	}
 
 	/**
+	 * Sets if the file is matched for this account.
+	 * @param matched If the file is matched for this account.
+	 */
+	public void setMatched(boolean matched) {
+		this.matched = matched;
+	}
+
+	/**
 	 * Sets the name of the account.
 	 * @param name Name of the account.
 	 */
@@ -136,6 +154,14 @@ public class AccountData {
 	 */
 	public void setUsedSpace(long usedSpace) {
 		this.usedSpace = usedSpace;
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	@Override
+	public String toString() {
+		return name + ((matched) ? " (file matched)" : "");
 	}
 
 }

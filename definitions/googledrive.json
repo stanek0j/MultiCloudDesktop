@@ -240,5 +240,17 @@
 			"size":"quotaBytesUsed",
 			"name":"title"
 		}
+	},
+	"metadata_request":
+	{
+		"uri":"https://www.googleapis.com/drive/v2/files/<id>",
+		"method":"GET",
+		"mapping":
+		{
+			"content":"items",
+			"deleted":"labels/trashed",
+			"size":"quotaBytesUsed",
+			"name":"title"
+		}
 	}
 }

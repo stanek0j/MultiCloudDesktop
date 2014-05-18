@@ -42,6 +42,9 @@ public class AccountQuotaCallback implements BackgroundCallback<AccountQuota> {
 	 */
 	@Override
 	public void onFinish(BackgroundTask task, String accountName, AccountQuota result) {
+		if (result == null) {
+			return;
+		}
 		/* update the list */
 		for (int i = 0; i < list.getModel().getSize(); i++) {
 			AccountData account = list.getModel().getElementAt(i);

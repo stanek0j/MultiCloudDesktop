@@ -209,5 +209,21 @@
 			"size":"bytes",
 			"mimeType":"mime_type"
 		}
-	}
+	},
+	"metadata_request":
+	{
+		"uri":"https://api.dropbox.com/1/metadata/dropbox/<path>",
+		"method":"GET",
+		"params":
+		{
+			"list":"false"
+		},
+		"mapping":
+		{
+			"content":"contents",
+			"deleted":"is_deleted",
+			"size":"bytes",
+			"mimeType":"mime_type"
+		}
+	}	
 }

@@ -136,5 +136,16 @@
 			"parent":"parent_id",
 			"stringFileType":"type"
 		}
+	},
+	"metadata_request":
+	{
+		"uri":"https://apis.live.net/v5.0/<id>",
+		"method":"GET",
+		"mapping":
+		{
+			"content":"data",
+			"parent":"parent_id",
+			"stringFileType":"type"
+		}
 	}
 }

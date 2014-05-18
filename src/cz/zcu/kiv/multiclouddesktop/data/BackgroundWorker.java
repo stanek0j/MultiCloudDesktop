@@ -1,15 +1,18 @@
 package cz.zcu.kiv.multiclouddesktop.data;
 
 import java.io.File;
+import java.util.List;
 
 import javax.swing.JButton;
 import javax.swing.JProgressBar;
 
 import cz.zcu.kiv.multicloud.MultiCloud;
 import cz.zcu.kiv.multicloud.MultiCloudException;
+import cz.zcu.kiv.multicloud.filesystem.FileType;
 import cz.zcu.kiv.multicloud.json.AccountInfo;
 import cz.zcu.kiv.multicloud.json.AccountQuota;
 import cz.zcu.kiv.multicloud.json.FileInfo;
+import cz.zcu.kiv.multicloud.json.ParentInfo;
 import cz.zcu.kiv.multicloud.oauth2.OAuth2SettingsException;
 import cz.zcu.kiv.multiclouddesktop.MultiCloudDesktop;
 import cz.zcu.kiv.multiclouddesktop.dialog.ProgressDialog;
@@ -27,6 +30,7 @@ public class BackgroundWorker extends Thread {
 
 	private BackgroundTask task;
 	private ProgressDialog dialog;
+	private SearchCallback searchCallback;
 	private String account;
 	private String[] accounts;
 	private FileInfo src;
@@ -394,7 +398,9 @@ public class BackgroundWorker extends Thread {
 			case MULTI_DOWNLOAD:
 				try {
 					for (int i = 0; i < accounts.length; i++) {
-						cloud.addDownloadSource(accounts[i], srcs[i]);
+						if (srcs[i] != null) {
+							cloud.addDownloadSource(accounts[i], srcs[i]);
+						}
 					}
 					long start = System.currentTimeMillis();
 					cloud.downloadMultiFile(localFile, overwrite);
@@ -522,6 +528,50 @@ public class BackgroundWorker extends Thread {
 					}
 				}
 				break;
+			case SEARCH:
+				List<FileInfo> result = null;
+				try {
+					result = cloud.search(account, dstName, showDeleted);
+					if (result != null) {
+						for (FileInfo f: result) {
+							/* find the path of the file */
+							if (f.getPath() == null) {
+								StringBuilder sb = new StringBuilder("/" + f.getName());
+								ParentInfo parent = f.getParents().get(0);
+								String currentId = f.getId();
+								do {
+									if (parent.getId().equals(currentId)) {
+										break;
+									}
+									FileInfo fromParent = new FileInfo();
+									fromParent.setId(parent.getId());
+									fromParent.setPath(parent.getPath());
+									fromParent.setFileType(FileType.FOLDER);
+									FileInfo meta = cloud.metadata(account, fromParent);
+									if (meta.getParents().isEmpty()) {
+										break;
+									} else {
+										currentId = parent.getId();
+										parent = meta.getParents().get(0);
+										sb.insert(0, "/" + meta.getName());
+									}
+								} while (true);
+								f.setPath(sb.toString());
+							}
+						}
+					}
+					if (messageCallback != null) {
+						messageCallback.onFinish(task, "Search finished.", false);
+					}
+				} catch (MultiCloudException | OAuth2SettingsException | InterruptedException e) {
+					if (messageCallback != null) {
+						messageCallback.onFinish(task, e.getMessage(), true);
+					}
+				}
+				if (searchCallback != null) {
+					searchCallback.onFinish(task, account, result);
+				}
+				break;
 			case NONE:
 			default:
 				break;
@@ -536,6 +586,21 @@ public class BackgroundWorker extends Thread {
 				System.out.println("worker done");
 			}
 		}
+	}
+
+	public boolean search(String accountName, String query, SearchCallback callback) {
+		boolean ready = false;
+		synchronized (this) {
+			if (task == BackgroundTask.NONE) {
+				task = BackgroundTask.SEARCH;
+				searchCallback = callback;
+				account = accountName;
+				dstName = query;
+				ready = true;
+				notifyAll();
+			}
+		}
+		return ready;
 	}
 
 	public synchronized boolean shouldTerminate() {
