@@ -12,6 +12,8 @@ import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import java.awt.event.WindowAdapter;
+import java.awt.event.WindowEvent;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
@@ -30,7 +32,6 @@ import javax.swing.JList;
 import javax.swing.JMenu;
 import javax.swing.JMenuBar;
 import javax.swing.JMenuItem;
-import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JPopupMenu;
 import javax.swing.JProgressBar;
@@ -53,16 +54,24 @@ import cz.zcu.kiv.multicloud.oauth2.OAuth2SettingsException;
 import cz.zcu.kiv.multicloud.utils.AccountManager;
 import cz.zcu.kiv.multicloud.utils.CloudManager;
 import cz.zcu.kiv.multicloud.utils.Utils;
+import cz.zcu.kiv.multiclouddesktop.action.AddAccountAction;
+import cz.zcu.kiv.multiclouddesktop.action.AuthorizeAction;
 import cz.zcu.kiv.multiclouddesktop.action.CopyAction;
 import cz.zcu.kiv.multiclouddesktop.action.CreateFolderAction;
 import cz.zcu.kiv.multiclouddesktop.action.CutAction;
 import cz.zcu.kiv.multiclouddesktop.action.DeleteAction;
 import cz.zcu.kiv.multiclouddesktop.action.DownloadAction;
+import cz.zcu.kiv.multiclouddesktop.action.ExitAction;
 import cz.zcu.kiv.multiclouddesktop.action.FindAction;
+import cz.zcu.kiv.multiclouddesktop.action.InformationAction;
 import cz.zcu.kiv.multiclouddesktop.action.MultiDownloadAction;
 import cz.zcu.kiv.multiclouddesktop.action.PasteAction;
+import cz.zcu.kiv.multiclouddesktop.action.PreferencesAction;
 import cz.zcu.kiv.multiclouddesktop.action.PropertiesAction;
+import cz.zcu.kiv.multiclouddesktop.action.QuotaAction;
 import cz.zcu.kiv.multiclouddesktop.action.RefreshAction;
+import cz.zcu.kiv.multiclouddesktop.action.RemoveAccountAction;
+import cz.zcu.kiv.multiclouddesktop.action.RenameAccountAction;
 import cz.zcu.kiv.multiclouddesktop.action.RenameAction;
 import cz.zcu.kiv.multiclouddesktop.action.TransferType;
 import cz.zcu.kiv.multiclouddesktop.action.UploadAction;
@@ -76,7 +85,6 @@ import cz.zcu.kiv.multiclouddesktop.data.FileInfoCallback;
 import cz.zcu.kiv.multiclouddesktop.data.FileInfoListCellRenderer;
 import cz.zcu.kiv.multiclouddesktop.data.MessageCallback;
 import cz.zcu.kiv.multiclouddesktop.data.SearchCallback;
-import cz.zcu.kiv.multiclouddesktop.dialog.AccountDialog;
 import cz.zcu.kiv.multiclouddesktop.dialog.AuthorizeDialog;
 import cz.zcu.kiv.multiclouddesktop.dialog.DialogProgressListener;
 import cz.zcu.kiv.multiclouddesktop.dialog.ProgressDialog;
@@ -153,6 +161,14 @@ public class MultiCloudDesktop extends JFrame {
 	private final JMenuItem mntmPaste;
 	private final JMenuItem mntmProperties;
 
+	private final JPopupMenu popupAccountMenu;
+	private final JMenuItem mntmAddAccountPop;
+	private final JMenuItem mntmAuthorizePop;
+	private final JMenuItem mntmInformationPop;
+	private final JMenuItem mntmQuotaPop;
+	private final JMenuItem mntmRenameAccountPop;
+	private final JMenuItem mntmRemoveAccountPop;
+
 	private final JPopupMenu popupMenu;
 	private final JMenuItem mntmRefreshPop;
 	private final JMenuItem mntmFindPop;
@@ -166,6 +182,16 @@ public class MultiCloudDesktop extends JFrame {
 	private final JMenuItem mntmCopyPop;
 	private final JMenuItem mntmPastePop;
 	private final JMenuItem mntmPropertiesPop;
+
+	private final Action actPreferences;
+	private final Action actExit;
+
+	private final Action actAddAccount;
+	private final Action actAuthorize;
+	private final Action actInformation;
+	private final Action actQuota;
+	private final Action actRenameAccount;
+	private final Action actRemoveAccount;
 
 	private final Action actRefresh;
 	private final Action actFind;
@@ -301,6 +327,22 @@ public class MultiCloudDesktop extends JFrame {
 					}
 				}
 			}
+			@Override
+			public void mousePressed(MouseEvent event) {
+				if (event.isPopupTrigger()) {
+					showMenu(event);
+				}
+			}
+			@Override
+			public void mouseReleased(MouseEvent event) {
+				if (event.isPopupTrigger()) {
+					showMenu(event);
+				}
+			}
+			private void showMenu(MouseEvent event) {
+				accountList.setSelectedIndex(accountList.locationToIndex(event.getPoint()));
+				popupAccountMenu.show(event.getComponent(), event.getX(), event.getY());
+			}
 		});
 		accountRenderer = new AccountDataListCellRenderer(accountList.getFont().deriveFont(Font.BOLD, 14.0f), accountList.getFont());
 		accountList.setVisibleRowCount(-1);
@@ -427,6 +469,26 @@ public class MultiCloudDesktop extends JFrame {
 		worker.load(accounts);
 		refreshCurrentPath();
 
+		addWindowListener(new WindowAdapter() {
+			/**
+			 * {@inheritDoc}
+			 */
+			@Override
+			public void windowClosing(WindowEvent event) {
+				actionClose();
+			}
+		});
+
+		actPreferences = new PreferencesAction(this);
+		actExit = new ExitAction(this);
+
+		actAddAccount = new AddAccountAction(this);
+		actAuthorize = new AuthorizeAction(this);
+		actInformation = new InformationAction(this);
+		actQuota = new QuotaAction(this);
+		actRenameAccount = new RenameAccountAction(this);
+		actRemoveAccount = new RemoveAccountAction(this);
+
 		actRefresh = new RefreshAction(this);
 		actFind = new FindAction(this, icnFolderSmall, icnFileSmall);
 		actUpload = new UploadAction(this, null);
@@ -454,196 +516,67 @@ public class MultiCloudDesktop extends JFrame {
 		mnFile.setMargin(new Insets(4, 4, 4, 4));
 		menuBar.add(mnFile);
 
-		mntmPreferences = new JMenuItem("Preferences");
+		mntmPreferences = new JMenuItem();
+		mntmPreferences.setAction(actPreferences);
 		mnFile.add(mntmPreferences);
 
-		mntmExit = new JMenuItem("Exit");
-		mntmExit.addActionListener(new ActionListener() {
-			/**
-			 * {@inheritDoc}
-			 */
-			@Override
-			public void actionPerformed(ActionEvent event) {
-				worker.terminate();
-				dispose();
-			}
-		});
+		mntmExit = new JMenuItem();
+		mntmExit.setAction(actExit);
 		mnFile.add(mntmExit);
 
 		mnAccount = new JMenu("Account");
 		mnAccount.setMargin(new Insets(4, 4, 4, 4));
 		menuBar.add(mnAccount);
 
-		mntmAddAccount = new JMenuItem("Add");
-		mntmAddAccount.addActionListener(new ActionListener() {
-			/**
-			 * {@inheritDoc}
-			 */
-			@Override
-			public void actionPerformed(ActionEvent event) {
-				AccountDialog dialog = new AccountDialog(window, "Add new account", accountManager, cloudManager, null);
-				dialog.setVisible(true);
-				switch (dialog.getOption()) {
-				case JOptionPane.OK_OPTION:
-					AccountData account = dialog.getAccountData();
-					try {
-						cloud.createAccount(account.getName(), account.getCloud());
-						accountModel.addElement(account);
-						messageCallback.displayMessage("Added new account.");
-					} catch (MultiCloudException e) {
-						messageCallback.displayError(e.getMessage());
-					}
-					break;
-				case JOptionPane.CANCEL_OPTION:
-				case JOptionPane.CLOSED_OPTION:
-				default:
-					messageCallback.displayMessage("Adding account canceled.");
-					break;
-				}
-			}
-		});
+		mntmAddAccount = new JMenuItem();
+		mntmAddAccount.setAction(actAddAccount);
 		mnAccount.add(mntmAddAccount);
 
 		mntmAuthorize = new JMenuItem("Authorize");
-		mntmAuthorize.addActionListener(new ActionListener() {
-			/**
-			 * {@inheritDoc}
-			 */
-			@Override
-			public void actionPerformed(ActionEvent event) {
-				if (accountList.getSelectedIndex() > -1) {
-					final AccountData account = accountList.getSelectedValue();
-					final AuthorizeDialog dialog = new AuthorizeDialog(window, "Waiting for authorization", "Authorization");
-					Thread t = new Thread() {
-						/**
-						 * {@inheritDoc}
-						 */
-						@Override
-						public void run() {
-							try {
-								cloud.authorizeAccount(account.getName(), new BrowserCallback(dialog, window));
-							} catch (MultiCloudException | OAuth2SettingsException | InterruptedException e) {
-								dialog.setAlwaysOnTop(false);
-								dialog.setFailed(true);
-								messageCallback.displayError(e.getMessage());
-							}
-							dialog.closeDialog();
-						};
-					};
-					t.start();
-					dialog.setVisible(true);
-					if (dialog.isAborted()) {
-						cloud.abortAuthorization();
-						messageCallback.displayMessage("Authorization aborted.");
-					} else {
-						try {
-							t.join();
-						} catch (InterruptedException e) {
-							messageCallback.displayError(e.getMessage());
-						}
-						if (!dialog.isFailed()) {
-							messageCallback.displayMessage("Account authorized.");
-							account.setAuthorized(true);
-							worker.refresh(account.getName(), null);
-						}
-					}
-				} else {
-					messageCallback.displayError("No account selected. Select one first.");
-				}
-			}
-		});
+		mntmAuthorize.setAction(actAuthorize);
 		mnAccount.add(mntmAuthorize);
 
-		mntmInformation = new JMenuItem("Information");
-		mntmInformation.addActionListener(new ActionListener() {
-			@Override
-			public void actionPerformed(ActionEvent event) {
-				AccountData account = accountList.getSelectedValue();
-				if (account == null) {
-					messageCallback.displayError("No account selected for listing its basic information.");
-				} else {
-					worker.accountInfo(account.getName());
-				}
-			}
-		});
+		mntmInformation = new JMenuItem();
+		mntmInformation.setAction(actInformation);
 		mnAccount.add(mntmInformation);
 
-		mntmQuota = new JMenuItem("Quota");
-		mntmQuota.addActionListener(new ActionListener() {
-			@Override
-			public void actionPerformed(ActionEvent event) {
-				AccountData account = accountList.getSelectedValue();
-				if (account == null) {
-					messageCallback.displayError("No account selected for listing its quota.");
-				} else {
-					worker.accountQuota(account.getName());
-				}
-			}
-		});
+		mntmQuota = new JMenuItem();
+		mntmQuota.setAction(actQuota);
 		mnAccount.add(mntmQuota);
 
-		mntmRenameAccount = new JMenuItem("Rename");
-		mntmRenameAccount.addActionListener(new ActionListener() {
-			@Override
-			public void actionPerformed(ActionEvent event) {
-				AccountData account = accountList.getSelectedValue();
-				if (account == null) {
-					messageCallback.displayError("No account selected to be renamed.");
-				} else {
-					AccountDialog dialog = new AccountDialog(window, "Rename account", accountManager, cloudManager, account);
-					dialog.setVisible(true);
-					switch (dialog.getOption()) {
-					case JOptionPane.OK_OPTION:
-						AccountData renamed = dialog.getAccountData();
-						try {
-							cloud.renameAccount(account.getName(), renamed.getName());
-							accountModel.removeElement(account);
-							accountModel.addElement(renamed);
-							messageCallback.displayMessage("Account renamed.");
-						} catch (MultiCloudException e) {
-							messageCallback.displayError(e.getMessage());
-						}
-						break;
-					case JOptionPane.CANCEL_OPTION:
-					case JOptionPane.CLOSED_OPTION:
-					default:
-						messageCallback.displayMessage("Renaming account canceled.");
-						break;
-					}
-				}
-			}
-		});
+		mntmRenameAccount = new JMenuItem();
+		mntmRenameAccount.setAction(actRenameAccount);
 		mnAccount.add(mntmRenameAccount);
 
-		mntmRemoveAccount = new JMenuItem("Remove");
-		mntmRemoveAccount.addActionListener(new ActionListener() {
-			@Override
-			public void actionPerformed(ActionEvent event) {
-				AccountData account = accountList.getSelectedValue();
-				if (account == null) {
-					JOptionPane.showMessageDialog(window, "No account selected for removal.", "Remove account", JOptionPane.ERROR_MESSAGE);
-				} else {
-					int result = JOptionPane.showConfirmDialog(window, "Are you sure you want to remove this account?", "Remove account", JOptionPane.OK_CANCEL_OPTION, JOptionPane.QUESTION_MESSAGE);
-					switch (result) {
-					case JOptionPane.OK_OPTION:
-						try {
-							cloud.deleteAccount(account.getName());
-							accountModel.removeElement(account);
-							messageCallback.displayMessage("Account removed.");
-						} catch (MultiCloudException e) {
-							messageCallback.displayError(e.getMessage());
-						}
-						break;
-					case JOptionPane.CANCEL_OPTION:
-					case JOptionPane.CLOSED_OPTION:
-					default:
-						messageCallback.displayMessage("Account removal canceled.");
-						break;
-					}
-				}
-			}
-		});
+		mntmRemoveAccount = new JMenuItem();
+		mntmRemoveAccount.setAction(actRemoveAccount);
 		mnAccount.add(mntmRemoveAccount);
+
+		popupAccountMenu = new JPopupMenu();
+
+		mntmAddAccountPop = new JMenuItem();
+		mntmAddAccountPop.setAction(actAddAccount);
+		popupAccountMenu.add(mntmAddAccountPop);
+
+		mntmAuthorizePop = new JMenuItem();
+		mntmAuthorizePop.setAction(actAuthorize);
+		popupAccountMenu.add(mntmAuthorizePop);
+
+		mntmInformationPop = new JMenuItem();
+		mntmInformationPop.setAction(actInformation);
+		popupAccountMenu.add(mntmInformationPop);
+
+		mntmQuotaPop = new JMenuItem();
+		mntmQuotaPop.setAction(actQuota);
+		popupAccountMenu.add(mntmQuotaPop);
+
+		mntmRenameAccountPop = new JMenuItem();
+		mntmRenameAccountPop.setAction(actRenameAccount);
+		popupAccountMenu.add(mntmRenameAccountPop);
+
+		mntmRemoveAccountPop = new JMenuItem();
+		mntmRemoveAccountPop.setAction(actRemoveAccount);
+		popupAccountMenu.add(mntmRemoveAccountPop);
 
 		mnOperation = new JMenu("Operation");
 		mnOperation.setMargin(new Insets(4, 4, 4, 4));
@@ -769,6 +702,57 @@ public class MultiCloudDesktop extends JFrame {
 		worker.abort();
 	}
 
+	public synchronized void actionAddAccount(AccountData account) {
+		try {
+			cloud.createAccount(account.getName(), account.getCloud());
+			accountModel.addElement(account);
+			messageCallback.displayMessage("Added new account.");
+		} catch (MultiCloudException e) {
+			messageCallback.displayError(e.getMessage());
+		}
+	}
+
+	public synchronized void actionAuthorize(final AccountData account, final AuthorizeDialog dialog) {
+		Thread t = new Thread() {
+			/**
+			 * {@inheritDoc}
+			 */
+			@Override
+			public void run() {
+				try {
+					cloud.authorizeAccount(account.getName(), new BrowserCallback(dialog, window));
+				} catch (MultiCloudException | OAuth2SettingsException | InterruptedException e) {
+					dialog.setFailed(true);
+					messageCallback.displayError(e.getMessage());
+				}
+				dialog.closeDialog();
+			};
+		};
+		t.start();
+		dialog.setVisible(true);
+		if (dialog.isAborted()) {
+			cloud.abortAuthorization();
+			messageCallback.displayMessage("Authorization aborted.");
+		} else {
+			try {
+				t.join(1000);
+			} catch (InterruptedException e) {
+				/* interrupted exception */
+			}
+			if (!dialog.isFailed()) {
+				messageCallback.displayMessage("Account authorized.");
+				account.setAuthorized(true);
+				worker.refresh(account.getName(), null);
+			}
+		}
+	}
+
+	public synchronized void actionClose() {
+		worker.terminate();
+		dispose();
+		System.exit(0);
+	}
+
 	public synchronized void actionCopy(FileInfo file) {
 		transferFile = file;
 		transferType = TransferType.COPY;
@@ -801,6 +785,10 @@ public class MultiCloudDesktop extends JFrame {
 		 */
 	}
 
+	public synchronized void actionInformation(AccountData account) {
+		worker.accountInfo(account.getName());
+	}
+
 	public synchronized void actionMultiDownload(String[] accounts, FileInfo[] files, File target, boolean overwrite, ProgressDialog dialog) {
 		progressListener.setDialog(dialog);
 		worker.multiDownload(accounts, files, target, overwrite, dialog);
@@ -824,6 +812,10 @@ public class MultiCloudDesktop extends JFrame {
 		transferType = TransferType.NONE;
 	}
 
+	public synchronized void actionQuota(AccountData account) {
+		worker.accountQuota(account.getName());
+	}
+
 	public synchronized void actionRefresh(String accountName) {
 		synchronized (lock) {
 			if (accountName != null && !accountName.equals(currentAccount)) {
@@ -834,8 +826,29 @@ public class MultiCloudDesktop extends JFrame {
 		worker.refresh(accountName, currentFolder);
 	}
 
+	public synchronized void actionRemoveAccount(AccountData account) {
+		try {
+			cloud.deleteAccount(account.getName());
+			accountModel.removeElement(account);
+			messageCallback.displayMessage("Account removed.");
+		} catch (MultiCloudException e) {
+			messageCallback.displayError(e.getMessage());
+		}
+	}
+
 	public synchronized void actionRename(String name, FileInfo file) {
 		worker.rename(currentAccount, name, file, currentFolder);
+	}
+
+	public synchronized void actionRenameAccount(AccountData original, AccountData renamed) {
+		try {
+			cloud.renameAccount(original.getName(), renamed.getName());
+			accountModel.removeElement(original);
+			accountModel.addElement(renamed);
+			messageCallback.displayMessage("Account renamed.");
+		} catch (MultiCloudException e) {
+			messageCallback.displayError(e.getMessage());
+		}
 	}
 
 	public synchronized boolean actionSearch(String account, String query, SearchCallback callback) {

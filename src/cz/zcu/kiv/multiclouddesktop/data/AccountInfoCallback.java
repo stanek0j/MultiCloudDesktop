@@ -46,7 +46,7 @@ public class AccountInfoCallback implements BackgroundCallback<AccountInfo> {
 				namePanel,
 				idPanel
 		};
-		JOptionPane.showMessageDialog(MultiCloudDesktop.getWindow(), content, "Account information", JOptionPane.INFORMATION_MESSAGE);
+		JOptionPane.showMessageDialog(MultiCloudDesktop.getWindow(), content, "Account information", JOptionPane.PLAIN_MESSAGE);
 	}
 
 }

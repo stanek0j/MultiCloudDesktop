@@ -93,7 +93,7 @@ public class AccountQuotaCallback implements BackgroundCallback<AccountQuota> {
 					freePanel,
 					usedPanel
 			};
-			JOptionPane.showMessageDialog(MultiCloudDesktop.getWindow(), content, "Account quota", JOptionPane.INFORMATION_MESSAGE);
+			JOptionPane.showMessageDialog(MultiCloudDesktop.getWindow(), content, "Account quota", JOptionPane.PLAIN_MESSAGE);
 		}
 	}
 

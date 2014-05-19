@@ -113,15 +113,7 @@ public class MultiDownloadAction extends CloudAction {
 					parent.getMessageCallback().displayMessage("Download canceled.");
 					return;
 				}
-				for (int i = 0; i < sDialog.getOutput().length; i++) {
-					System.out.print(accounts[i] + ": ");
-					if (sDialog.getOutput()[i] != null) {
-						System.out.println(sDialog.getOutput()[i].getName() + " :: " + sDialog.getOutput()[i].getPath());
-					} else {
-						System.out.println("null");
-					}
-				}
-				/* choose local file */
+				/* choose local file and download */
 				chooser.setSelectedFile(new File(file.getName()));
 				option = chooser.showSaveDialog(parent);
 				switch (option) {
