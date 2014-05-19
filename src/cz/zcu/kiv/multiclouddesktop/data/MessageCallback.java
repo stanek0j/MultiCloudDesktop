@@ -20,13 +20,16 @@ public class MessageCallback implements BackgroundCallback<Boolean> {
 
 	/** Target label. */
 	private final JLabel status;
+	/** If error dialog should be displayed. */
+	private boolean showErrorDialog;
 
 	/**
 	 * Ctor with the target label.
 	 * @param status Target label.
 	 */
-	public MessageCallback(JLabel status) {
+	public MessageCallback(JLabel status, boolean showErrorDialog) {
 		this.status = status;
+		this.showErrorDialog = showErrorDialog;
 	}
 
 	/**
@@ -36,7 +39,9 @@ public class MessageCallback implements BackgroundCallback<Boolean> {
 	public synchronized void displayError(String message) {
 		status.setForeground(Color.RED);
 		status.setText("Error: " + message);
-		JOptionPane.showMessageDialog(MultiCloudDesktop.getWindow(), message, "Error", JOptionPane.ERROR_MESSAGE);
+		if (showErrorDialog) {
+			JOptionPane.showMessageDialog(MultiCloudDesktop.getWindow(), message, "Error", JOptionPane.ERROR_MESSAGE);
+		}
 	}
 
 	/**
@@ -60,6 +65,14 @@ public class MessageCallback implements BackgroundCallback<Boolean> {
 				displayMessage(accountName);
 			}
 		}
+	}
+
+	/**
+	 * Sets if the error dialog should be displayed.
+	 * @param showErrorDialog If the error dialog should be displayed.
+	 */
+	public void setShowErrorDialog(boolean showErrorDialog) {
+		this.showErrorDialog = showErrorDialog;
 	}
 
 }

@@ -45,11 +45,14 @@ import javax.swing.UIManager;
 import javax.swing.UnsupportedLookAndFeelException;
 import javax.swing.border.EmptyBorder;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+
 import cz.zcu.kiv.multicloud.MultiCloud;
 import cz.zcu.kiv.multicloud.MultiCloudException;
 import cz.zcu.kiv.multicloud.filesystem.FileType;
 import cz.zcu.kiv.multicloud.json.AccountSettings;
 import cz.zcu.kiv.multicloud.json.FileInfo;
+import cz.zcu.kiv.multicloud.json.Json;
 import cz.zcu.kiv.multicloud.oauth2.OAuth2SettingsException;
 import cz.zcu.kiv.multicloud.utils.AccountManager;
 import cz.zcu.kiv.multicloud.utils.CloudManager;
@@ -84,6 +87,7 @@ import cz.zcu.kiv.multiclouddesktop.data.BackgroundWorker;
 import cz.zcu.kiv.multiclouddesktop.data.FileInfoCallback;
 import cz.zcu.kiv.multiclouddesktop.data.FileInfoListCellRenderer;
 import cz.zcu.kiv.multiclouddesktop.data.MessageCallback;
+import cz.zcu.kiv.multiclouddesktop.data.Preferences;
 import cz.zcu.kiv.multiclouddesktop.data.SearchCallback;
 import cz.zcu.kiv.multiclouddesktop.dialog.AuthorizeDialog;
 import cz.zcu.kiv.multiclouddesktop.dialog.DialogProgressListener;
@@ -94,6 +98,9 @@ public class MultiCloudDesktop extends JFrame {
 	/** Serialization constant. */
 	private static final long serialVersionUID = -1394767380063338580L;
 
+	/** Default file for holding preferences. */
+	public static final String PREFS_FILE = "prefs.json";
+	/** Application name. */
 	private static final String APP_NAME = "MultiCloudDesktop";
 
 	private static MultiCloudDesktop window;
@@ -150,6 +157,7 @@ public class MultiCloudDesktop extends JFrame {
 	private final JMenuItem mntmRemoveAccount;
 	private final JMenu mnOperation;
 	private final JMenuItem mntmRefresh;
+	private final JMenuItem mntmFind;
 	private final JMenuItem mntmUpload;
 	private final JMenuItem mntmDownload;
 	private final JMenuItem mntmMultiDownload;
@@ -222,14 +230,18 @@ public class MultiCloudDesktop extends JFrame {
 	private FileInfo currentFolder;
 	private FileInfo transferFile;
 	private TransferType transferType;
+	private Preferences prefs;
 	private final Object lock;
-	private final JMenuItem mntmFind;
+	/** JSON parser instance. */
+	private final Json json;
 
 	public MultiCloudDesktop() {
 		loader = MultiCloudDesktop.class.getClassLoader();
 		transferFile = null;
 		transferType = TransferType.NONE;
 		lock = new Object();
+		json = Json.getInstance();
+		prefs = preferencesLoad();
 
 		setMinimumSize(new Dimension(720, 480));
 		setPreferredSize(new Dimension(720, 480));
@@ -370,7 +382,6 @@ public class MultiCloudDesktop extends JFrame {
 
 		dataModel = new DefaultListModel<>();
 		dataList = new JList<>();
-		dataList.setLayoutOrientation(JList.HORIZONTAL_WRAP);
 		dataList.addKeyListener(new KeyAdapter() {
 			@Override
 			public void keyPressed(KeyEvent event) {
@@ -409,10 +420,6 @@ public class MultiCloudDesktop extends JFrame {
 				popupMenu.show(event.getComponent(), event.getX(), event.getY());
 			}
 		});
-		if (dataList.getLayoutOrientation() == JList.HORIZONTAL_WRAP) {
-			dataList.setFixedCellWidth(80);
-			dataList.setFixedCellHeight(96);
-		}
 		dataRenderer = new FileInfoListCellRenderer(icnFolder, icnFolderSmall, icnFile, icnFileSmall);
 		dataList.setVisibleRowCount(-1);
 		dataScrollPane.setViewportView(dataList);
@@ -459,7 +466,7 @@ public class MultiCloudDesktop extends JFrame {
 		quotaCallback = new AccountQuotaCallback(accountList);
 		listCallback = new FileInfoCallback(accountList, dataList);
 
-		messageCallback = new MessageCallback(lblStatus);
+		messageCallback = new MessageCallback(lblStatus, prefs.isShowErrorDialog());
 		worker = new BackgroundWorker(cloud, btnAbort, progressBar, infoCallback, quotaCallback, listCallback, messageCallback);
 		worker.start();
 		String[] accounts = new String[accountModel.getSize()];
@@ -696,6 +703,7 @@ public class MultiCloudDesktop extends JFrame {
 		mntmPropertiesPop.setAction(actProperties);
 		popupMenu.add(mntmPropertiesPop);
 
+		actionPreferences(prefs);
 	}
 
 	public synchronized void actionAbort() {
@@ -812,6 +820,26 @@ public class MultiCloudDesktop extends JFrame {
 		transferType = TransferType.NONE;
 	}
 
+	public synchronized void actionPreferences(Preferences preferences) {
+		prefs = preferences;
+		preferencesSave();
+		switch (prefs.getDisplayType()) {
+		case ICONS:
+			dataList.setLayoutOrientation(JList.HORIZONTAL_WRAP);
+			dataList.setFixedCellWidth(80);
+			dataList.setFixedCellHeight(96);
+			break;
+		case LINES:
+		default:
+			dataList.setLayoutOrientation(JList.VERTICAL);
+			dataList.setFixedCellWidth(-1);
+			dataList.setFixedCellHeight(-1);
+			break;
+		}
+		worker.setShowDeleted(prefs.isShowDeleted());
+		worker.setShowShared(prefs.isShowShared());
+	}
+
 	public synchronized void actionQuota(AccountData account) {
 		worker.accountQuota(account.getName());
 	}
@@ -918,12 +946,43 @@ public class MultiCloudDesktop extends JFrame {
 		return parent;
 	}
 
+	public Preferences getPreferences() {
+		return prefs;
+	}
+
 	public DialogProgressListener getProgressListener() {
 		return progressListener;
 	}
 
 	public synchronized FileInfo getTransferFile() {
 		return transferFile;
+	}
+
+	/**
+	 * Load preferences from a file.
+	 * @return Loaded preferences.
+	 */
+	private Preferences preferencesLoad() {
+		Preferences loadedPrefs = new Preferences();
+		try {
+			ObjectMapper mapper = json.getMapper();
+			loadedPrefs = mapper.readValue(new File(PREFS_FILE), Preferences.class);
+		} catch (IOException e) {
+			messageCallback.displayError("Preferences file not found.");
+		}
+		return loadedPrefs;
+	}
+
+	/**
+	 * Save preferences to a file.
+	 */
+	private void preferencesSave() {
+		try {
+			ObjectMapper mapper = json.getMapper();
+			mapper.writerWithDefaultPrettyPrinter().writeValue(new File(PREFS_FILE), prefs);
+		} catch (IOException e) {
+			messageCallback.displayError("Failed to save preferences.");
+		}
 	}
 
 	private void refreshCurrentPath() {
@@ -977,4 +1036,5 @@ public class MultiCloudDesktop extends JFrame {
 			refreshCurrentPath();
 		}
 	}
+
 }

@@ -419,6 +419,9 @@ public class BackgroundWorker extends Thread {
 					FileInfo list = cloud.listFolder(account, src, showDeleted, showShared);
 					MultiCloudDesktop.getWindow().setCurrentAccount(account);
 					MultiCloudDesktop.getWindow().setCurrentFolder(task, list);
+					if (messageCallback != null) {
+						messageCallback.onFinish(task, "Folder listed.", false);
+					}
 					if (listCallback != null) {
 						listCallback.onFinish(task, account, list);
 					}
@@ -601,6 +604,14 @@ public class BackgroundWorker extends Thread {
 			}
 		}
 		return ready;
+	}
+
+	public void setShowDeleted(boolean showDeleted) {
+		this.showDeleted = showDeleted;
+	}
+
+	public void setShowShared(boolean showShared) {
+		this.showShared = showShared;
 	}
 
 	public synchronized boolean shouldTerminate() {

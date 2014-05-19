@@ -69,7 +69,14 @@ public class PropertiesAction extends CloudAction {
 			JPanel typePanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
 			JLabel lblType = new JLabel("Type:");
 			lblType.setPreferredSize(new Dimension(60, lblType.getPreferredSize().height));
-			JLabel lblTypeTxt = new JLabel(f.getFileType().getText());
+			StringBuilder sb = new StringBuilder(f.getFileType().getText());
+			if (f.isDeleted()) {
+				sb.append(" - deleted");
+			}
+			if (f.isShared()) {
+				sb.append(" - shared");
+			}
+			JLabel lblTypeTxt = new JLabel(sb.toString());
 			lblTypeTxt.setFont(boldFont);
 			typePanel.add(lblType);
 			typePanel.add(lblTypeTxt);

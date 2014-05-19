@@ -3,9 +3,12 @@ package cz.zcu.kiv.multiclouddesktop.action;
 import java.awt.event.ActionEvent;
 import java.awt.event.KeyEvent;
 
+import javax.swing.JOptionPane;
 import javax.swing.KeyStroke;
 
 import cz.zcu.kiv.multiclouddesktop.MultiCloudDesktop;
+import cz.zcu.kiv.multiclouddesktop.data.Preferences;
+import cz.zcu.kiv.multiclouddesktop.dialog.PreferencesDialog;
 
 /**
  * cz.zcu.kiv.multiclouddesktop.action/PreferencesAction.java			<br /><br />
@@ -39,7 +42,21 @@ public class PreferencesAction extends CloudAction {
 	 */
 	@Override
 	public void actionPerformed(ActionEvent event) {
-
+		Preferences prefs = parent.getPreferences();
+		PreferencesDialog dialog = new PreferencesDialog(parent, ACT_NAME, prefs);
+		dialog.setVisible(true);
+		switch (dialog.getOption()) {
+		case JOptionPane.OK_OPTION:
+			prefs = dialog.getPreferences();
+			parent.actionPreferences(prefs);
+			parent.getMessageCallback().displayMessage("Preferences updated.");
+			break;
+		case JOptionPane.CANCEL_OPTION:
+		case JOptionPane.CLOSED_OPTION:
+		default:
+			parent.getMessageCallback().displayMessage("Updating preferences canceled.");
+			break;
+		}
 	}
 
 }
