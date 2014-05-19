@@ -3,6 +3,7 @@ package cz.zcu.kiv.multiclouddesktop.data;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.Font;
+import java.awt.Frame;
 
 import javax.swing.JComponent;
 import javax.swing.JLabel;
@@ -13,7 +14,6 @@ import javax.swing.JPanel;
 import cz.zcu.kiv.multicloud.json.AccountQuota;
 import cz.zcu.kiv.multicloud.utils.Utils;
 import cz.zcu.kiv.multicloud.utils.Utils.UnitsFormat;
-import cz.zcu.kiv.multiclouddesktop.MultiCloudDesktop;
 
 /**
  * cz.zcu.kiv.multiclouddesktop.data/AccountQuotaCallback.java			<br /><br />
@@ -28,12 +28,16 @@ public class AccountQuotaCallback implements BackgroundCallback<AccountQuota> {
 
 	/** List with the user account information. */
 	private final JList<AccountData> list;
+	/** Parent frame. */
+	private final Frame parent;
 
 	/**
-	 * Ctor with list as a parameter.
+	 * Ctor with necessary parameters.
+	 * @param parent Parent frame.
 	 * @param list List with the user account information.
 	 */
-	public AccountQuotaCallback(JList<AccountData> list) {
+	public AccountQuotaCallback(Frame parent, JList<AccountData> list) {
+		this.parent = parent;
 		this.list = list;
 	}
 
@@ -93,7 +97,7 @@ public class AccountQuotaCallback implements BackgroundCallback<AccountQuota> {
 					freePanel,
 					usedPanel
 			};
-			JOptionPane.showMessageDialog(MultiCloudDesktop.getWindow(), content, "Account quota", JOptionPane.PLAIN_MESSAGE);
+			JOptionPane.showMessageDialog(parent, content, "Account quota", JOptionPane.PLAIN_MESSAGE);
 		}
 	}
 

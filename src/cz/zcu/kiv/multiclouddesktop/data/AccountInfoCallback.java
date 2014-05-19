@@ -3,6 +3,7 @@ package cz.zcu.kiv.multiclouddesktop.data;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.Font;
+import java.awt.Frame;
 
 import javax.swing.JComponent;
 import javax.swing.JLabel;
@@ -10,7 +11,6 @@ import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 
 import cz.zcu.kiv.multicloud.json.AccountInfo;
-import cz.zcu.kiv.multiclouddesktop.MultiCloudDesktop;
 
 /**
  * cz.zcu.kiv.multiclouddesktop.data/AccountInfoCallback.java			<br /><br />
@@ -22,6 +22,17 @@ import cz.zcu.kiv.multiclouddesktop.MultiCloudDesktop;
  *
  */
 public class AccountInfoCallback implements BackgroundCallback<AccountInfo> {
+
+	/** Parent frame. */
+	private final Frame parent;
+
+	/**
+	 * Ctor with necessary parameters.
+	 * @param parent Parent frame.
+	 */
+	public AccountInfoCallback(Frame parent) {
+		this.parent = parent;
+	}
 
 	/**
 	 * {@inheritDoc}
@@ -46,7 +57,7 @@ public class AccountInfoCallback implements BackgroundCallback<AccountInfo> {
 				namePanel,
 				idPanel
 		};
-		JOptionPane.showMessageDialog(MultiCloudDesktop.getWindow(), content, "Account information", JOptionPane.PLAIN_MESSAGE);
+		JOptionPane.showMessageDialog(parent, content, "Account information", JOptionPane.PLAIN_MESSAGE);
 	}
 
 }

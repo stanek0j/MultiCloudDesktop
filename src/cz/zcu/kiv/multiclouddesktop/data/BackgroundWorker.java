@@ -19,6 +19,7 @@ import cz.zcu.kiv.multiclouddesktop.dialog.ProgressDialog;
 
 public class BackgroundWorker extends Thread {
 
+	private final MultiCloudDesktop parent;
 	private final MultiCloud cloud;
 	private final JButton btnAbort;
 	private final JProgressBar progressBar;
@@ -46,6 +47,7 @@ public class BackgroundWorker extends Thread {
 	private boolean aborted;
 
 	public BackgroundWorker(
+			MultiCloudDesktop parent,
 			MultiCloud cloud,
 			JButton abort,
 			JProgressBar progress,
@@ -54,6 +56,7 @@ public class BackgroundWorker extends Thread {
 			BackgroundCallback<FileInfo> listCallback,
 			BackgroundCallback<Boolean> messageCallback
 			) {
+		this.parent = parent;
 		this.cloud = cloud;
 		this.btnAbort = abort;
 		this.progressBar = progress;
@@ -309,8 +312,8 @@ public class BackgroundWorker extends Thread {
 						quotaCallback.onFinish(task, account, quota);
 					}
 					FileInfo list = cloud.listFolder(account, src, showDeleted, showShared);
-					MultiCloudDesktop.getWindow().setCurrentAccount(account);
-					MultiCloudDesktop.getWindow().setCurrentFolder(task, list);
+					parent.setCurrentAccount(account);
+					parent.setCurrentFolder(task, list);
 					if (messageCallback != null) {
 						messageCallback.onFinish(task, "Account refreshed.", false);
 					}
@@ -417,8 +420,8 @@ public class BackgroundWorker extends Thread {
 			case LIST_FOLDER:
 				try {
 					FileInfo list = cloud.listFolder(account, src, showDeleted, showShared);
-					MultiCloudDesktop.getWindow().setCurrentAccount(account);
-					MultiCloudDesktop.getWindow().setCurrentFolder(task, list);
+					parent.setCurrentAccount(account);
+					parent.setCurrentFolder(task, list);
 					if (messageCallback != null) {
 						messageCallback.onFinish(task, "Folder listed.", false);
 					}

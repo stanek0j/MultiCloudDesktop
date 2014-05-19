@@ -1,11 +1,10 @@
 package cz.zcu.kiv.multiclouddesktop.data;
 
 import java.awt.Color;
+import java.awt.Frame;
 
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
-
-import cz.zcu.kiv.multiclouddesktop.MultiCloudDesktop;
 
 /**
  * cz.zcu.kiv.multiclouddesktop.data/MessageCallback.java			<br /><br />
@@ -22,12 +21,17 @@ public class MessageCallback implements BackgroundCallback<Boolean> {
 	private final JLabel status;
 	/** If error dialog should be displayed. */
 	private boolean showErrorDialog;
+	/** Parent frame. */
+	private final Frame parent;
 
 	/**
-	 * Ctor with the target label.
-	 * @param status Target label.
+	 * Ctor with necessary parameters.
+	 * @param parent Parent frame.
+	 * @param status Label for showing the status message.
+	 * @param showErrorDialog If the error dialog should be displayed.
 	 */
-	public MessageCallback(JLabel status, boolean showErrorDialog) {
+	public MessageCallback(Frame parent, JLabel status, boolean showErrorDialog) {
+		this.parent = parent;
 		this.status = status;
 		this.showErrorDialog = showErrorDialog;
 	}
@@ -40,7 +44,7 @@ public class MessageCallback implements BackgroundCallback<Boolean> {
 		status.setForeground(Color.RED);
 		status.setText("Error: " + message);
 		if (showErrorDialog) {
-			JOptionPane.showMessageDialog(MultiCloudDesktop.getWindow(), message, "Error", JOptionPane.ERROR_MESSAGE);
+			JOptionPane.showMessageDialog(parent, message, "Error", JOptionPane.ERROR_MESSAGE);
 		}
 	}
 

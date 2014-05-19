@@ -22,13 +22,17 @@ public class FileInfoCallback implements BackgroundCallback<FileInfo> {
 	private final JList<AccountData> accountList;
 	/** List for showing folder content. */
 	private final JList<FileInfo> dataList;
+	/** Parent frame. */
+	private final MultiCloudDesktop parent;
 
 	/**
 	 * Ctor with necessary parameters.
+	 * @param parent Parent frame.
 	 * @param accountList List of accounts.
 	 * @param dataList List for showing folder content.
 	 */
-	public FileInfoCallback(JList<AccountData> accountList, JList<FileInfo> dataList) {
+	public FileInfoCallback(MultiCloudDesktop parent, JList<AccountData> accountList, JList<FileInfo> dataList) {
+		this.parent = parent;
 		this.accountList = accountList;
 		this.dataList = dataList;
 	}
@@ -53,7 +57,7 @@ public class FileInfoCallback implements BackgroundCallback<FileInfo> {
 		DefaultListModel<FileInfo> model = (DefaultListModel<FileInfo>) dataList.getModel();
 		model.clear();
 		if (!result.isRoot()) {
-			model.addElement(MultiCloudDesktop.getWindow().getParentFolder());
+			model.addElement(parent.getParentFolder());
 		}
 		/* loop twice - first for folders, then for files */
 		for (FileInfo f: result.getContent()) {

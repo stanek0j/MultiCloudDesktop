@@ -99,15 +99,11 @@ public class MultiCloudDesktop extends JFrame {
 	private static final long serialVersionUID = -1394767380063338580L;
 
 	/** Default file for holding preferences. */
-	public static final String PREFS_FILE = "prefs.json";
+	public static final String PREFS_FILE = "preferences.json";
 	/** Application name. */
 	private static final String APP_NAME = "MultiCloudDesktop";
-
+	/** The application frame. */
 	private static MultiCloudDesktop window;
-
-	public static MultiCloudDesktop getWindow() {
-		return window;
-	}
 
 	public static void main(String[] args) {
 		try {
@@ -462,12 +458,12 @@ public class MultiCloudDesktop extends JFrame {
 		progressPanel.add(btnAbort);
 
 		currentPath = new LinkedList<>();
-		infoCallback = new AccountInfoCallback();
-		quotaCallback = new AccountQuotaCallback(accountList);
-		listCallback = new FileInfoCallback(accountList, dataList);
+		infoCallback = new AccountInfoCallback(this);
+		quotaCallback = new AccountQuotaCallback(this, accountList);
+		listCallback = new FileInfoCallback(this, accountList, dataList);
 
-		messageCallback = new MessageCallback(lblStatus, prefs.isShowErrorDialog());
-		worker = new BackgroundWorker(cloud, btnAbort, progressBar, infoCallback, quotaCallback, listCallback, messageCallback);
+		messageCallback = new MessageCallback(this, lblStatus, prefs.isShowErrorDialog());
+		worker = new BackgroundWorker(this, cloud, btnAbort, progressBar, infoCallback, quotaCallback, listCallback, messageCallback);
 		worker.start();
 		String[] accounts = new String[accountModel.getSize()];
 		for (int i = 0; i < accountModel.getSize(); i++) {
@@ -838,6 +834,7 @@ public class MultiCloudDesktop extends JFrame {
 		}
 		worker.setShowDeleted(prefs.isShowDeleted());
 		worker.setShowShared(prefs.isShowShared());
+		messageCallback.setShowErrorDialog(prefs.isShowErrorDialog());
 	}
 
 	public synchronized void actionQuota(AccountData account) {
