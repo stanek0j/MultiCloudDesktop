@@ -98,6 +98,15 @@ import cz.zcu.kiv.multiclouddesktop.dialog.AuthorizeDialog;
 import cz.zcu.kiv.multiclouddesktop.dialog.DialogProgressListener;
 import cz.zcu.kiv.multiclouddesktop.dialog.ProgressDialog;
 
+/**
+ * cz.zcu.kiv.multiclouddesktop/MultiCloudDesktop.java			<br /><br />
+ *
+ * Main frame of the multicloud desktop application.
+ *
+ * @author Jaromír Staněk
+ * @version 1.0
+ *
+ */
 public class MultiCloudDesktop extends JFrame {
 
 	/** Serialization constant. */
@@ -131,125 +140,234 @@ public class MultiCloudDesktop extends JFrame {
 			}
 		});
 	}
+
+	/** Panel for holding account information. */
 	private final JPanel accountPanel;
+	/** Scroll pane of the account list. */
 	private final JScrollPane accountScrollPane;
+	/** Model of the account list. */
 	private final DefaultListModel<AccountData> accountModel;
+	/** List of accounts. */
 	private final JList<AccountData> accountList;
+	/** Account list renderer. */
 	private final AccountDataListCellRenderer accountRenderer;
+	/** Panel for holding content of the accounts. */
 	private final JPanel dataPanel;
+	/** Scroll pane of the data list. */
 	private final JScrollPane dataScrollPane;
+	/** Model of the data list. */
 	private final DefaultListModel<FileInfo> dataModel;
+	/** List of files and folder. */
 	private final JList<FileInfo> dataList;
+	/** Data list renderer. */
 	private final FileInfoListCellRenderer dataRenderer;
+	/** Panel for holding current path. */
 	private final JPanel pathPanel;
+	/** Label for displaying current path. */
 	private final JLabel lblPath;
+	/** Panel for holding status information.  */
 	private final JPanel statusPanel;
+	/** Label with information messages. */
 	private final JLabel lblStatus;
+	/** Panel for displaying task progress. */
 	private final JPanel progressPanel;
+	/** Progress bar of the currently running task. */
 	private final JProgressBar progressBar;
+	/** Button for aborting current task. */
 	private final JButton btnAbort;
 
+	/** Main application menu. */
 	private final JMenuBar menuBar;
+	/** File menu. */
 	private final JMenu mnFile;
+	/** Preferences menu item. */
 	private final JMenuItem mntmPreferences;
+	/** Exit menu item. */
 	private final JMenuItem mntmExit;
+	/** Account menu. */
 	private final JMenu mnAccount;
+	/** Add account menu item. */
 	private final JMenuItem mntmAddAccount;
+	/** Authorize account menu item. */
 	private final JMenuItem mntmAuthorize;
+	/** Account information menu item. */
 	private final JMenuItem mntmInformation;
+	/** Account quota menu item. */
 	private final JMenuItem mntmQuota;
+	/** Rename account menu item. */
 	private final JMenuItem mntmRenameAccount;
+	/** Remove account menu item. */
 	private final JMenuItem mntmRemoveAccount;
+	/** Operation menu. */
 	private final JMenu mnOperation;
+	/** Refresh menu item. */
 	private final JMenuItem mntmRefresh;
+	/** Find menu item. */
 	private final JMenuItem mntmFind;
+	/** Upload menu item. */
 	private final JMenuItem mntmUpload;
+	/** Multiple upload menu item. */
 	private final JMenuItem mntmMultiUpload;
+	/** Download menu item. */
 	private final JMenuItem mntmDownload;
+	/** Multiple download menu item. */
 	private final JMenuItem mntmMultiDownload;
+	/** Create folder menu item. */
 	private final JMenuItem mntmCreateFolder;
+	/** Rename menu item. */
 	private final JMenuItem mntmRename;
+	/** Delete menu item. */
 	private final JMenuItem mntmDelete;
+	/** Cut menu item. */
 	private final JMenuItem mntmCut;
+	/** Copy menu item. */
 	private final JMenuItem mntmCopy;
+	/** Paste menu item. */
 	private final JMenuItem mntmPaste;
+	/** Properties menu item. */
 	private final JMenuItem mntmProperties;
 
+	/** Horizontal glue for separating menus. */
 	private final Component horizontalGlue;
 
+	/** Help menu. */
 	private final JMenu mnHelp;
+	/** About menu item. */
 	private final JMenuItem mntmAbout;
 
+	/** Pop up menu for account list. */
 	private final JPopupMenu popupAccountMenu;
+	/** Add account menu item. */
 	private final JMenuItem mntmAddAccountPop;
+	/** Authorize account menu item. */
 	private final JMenuItem mntmAuthorizePop;
+	/** Account information menu item. */
 	private final JMenuItem mntmInformationPop;
+	/** Account quota menu item. */
 	private final JMenuItem mntmQuotaPop;
+	/** Rename account menu item. */
 	private final JMenuItem mntmRenameAccountPop;
+	/** Remove account menu item. */
 	private final JMenuItem mntmRemoveAccountPop;
 
+	/** Pop up menu for data list. */
 	private final JPopupMenu popupMenu;
+	/** Refresh menu item. */
 	private final JMenuItem mntmRefreshPop;
+	/** Find menu item. */
 	private final JMenuItem mntmFindPop;
+	/** Upload menu item. */
 	private final JMenuItem mntmUploadPop;
+	/** Multiple upload menu item. */
 	private final JMenuItem mntmMultiUploadPop;
+	/** Download menu item. */
 	private final JMenuItem mntmDownloadPop;
+	/** Multiple download menu item. */
 	private final JMenuItem mntmMultiDownloadPop;
+	/** Create folder menu item. */
 	private final JMenuItem mntmCreateFolderPop;
+	/** Rename menu item. */
 	private final JMenuItem mntmRenamePop;
+	/** Delete menu item. */
 	private final JMenuItem mntmDeletePop;
+	/** Cut menu item. */
 	private final JMenuItem mntmCutPop;
+	/** Copy menu item. */
 	private final JMenuItem mntmCopyPop;
+	/** Paste menu item. */
 	private final JMenuItem mntmPastePop;
+	/** Properties menu item. */
 	private final JMenuItem mntmPropertiesPop;
 
+	/** Action for diplaying preferences. */
 	private final Action actPreferences;
+	/** Action for exiting application. */
 	private final Action actExit;
 
+	/** Action for adding account. */
 	private final Action actAddAccount;
+	/** Action for authorizing account. */
 	private final Action actAuthorize;
+	/** Action for getting account information. */
 	private final Action actInformation;
+	/** Action for getting account quota. */
 	private final Action actQuota;
+	/** Action for renaming account. */
 	private final Action actRenameAccount;
+	/** Action for removing account. */
 	private final Action actRemoveAccount;
 
+	/** Action for refreshing data list. */
 	private final Action actRefresh;
+	/** Action for searching for files and folders. */
 	private final Action actFind;
+	/** Action for uploading files. */
 	private final Action actUpload;
+	/** Action for uploading files to multiple destinations. */
 	private final Action actMultiUpload;
+	/** Action for downloading files. */
 	private final Action actDownload;
+	/** Action for downloading files from multiple sources. */
 	private final Action actMultiDownload;
+	/** Action for creating folder. */
 	private final Action actCreateFolder;
+	/** Action for renaming file or folder. */
 	private final Action actRename;
+	/** Action for deleting file or folder. */
 	private final Action actDelete;
+	/** Action for moving files. */
 	private final Action actCut;
+	/** Action for copying files. */
 	private final Action actCopy;
+	/** Action for pasting files. */
 	private final Action actPaste;
+	/** Action for displaying file or folder properties. */
 	private final Action actProperties;
 
+	/** Action for displaying information about application. */
 	private final Action actAbout;
 
+	/** Multicloud library. */
 	private final MultiCloud cloud;
+	/** Account manager. */
 	private final AccountManager accountManager;
+	/** Cloud manager. */
 	private final CloudManager cloudManager;
+	/** Progress listener. */
 	private final DialogProgressListener progressListener;
+	/** Class loader. */
 	private final ClassLoader loader;
+	/** Account information callback. */
 	private final AccountInfoCallback infoCallback;
+	/** Account quota callback. */
 	private final AccountQuotaCallback quotaCallback;
+	/** File list callback. */
 	private final FileInfoCallback listCallback;
+	/** Message callback. */
 	private final MessageCallback messageCallback;
 
+	/** Background thread for executing tasks. */
 	private final BackgroundWorker worker;
+	/** Current path. */
 	private final LinkedList<FileInfo> currentPath;
+	/** Current account. */
 	private String currentAccount;
+	/** Current folder. */
 	private FileInfo currentFolder;
+	/** File to be moved or copied. */
 	private FileInfo transferFile;
+	/** Move or copy transfer. */
 	private TransferType transferType;
+	/** Preferences of the user. */
 	private Preferences prefs;
+	/** Lock object. */
 	private final Object lock;
 	/** JSON parser instance. */
 	private final Json json;
 
+	/**
+	 * Empty ctor.
+	 */
 	public MultiCloudDesktop() {
 		loader = MultiCloudDesktop.class.getClassLoader();
 		transferFile = null;
@@ -265,6 +383,7 @@ public class MultiCloudDesktop extends JFrame {
 		setLocationByPlatform(true);
 		setTitle(APP_NAME);
 
+		/* load icons */
 		ImageIcon icnAbort = null;
 		ImageIcon icnFolder = null;
 		ImageIcon icnFolderSmall = null;
@@ -294,6 +413,7 @@ public class MultiCloudDesktop extends JFrame {
 			e1.printStackTrace();
 		}
 
+		/* initialize library */
 		cloud = new MultiCloud();
 		progressListener = new DialogProgressListener(200);
 		cloud.setListener(progressListener);
@@ -301,6 +421,8 @@ public class MultiCloudDesktop extends JFrame {
 		cloudManager = cloud.getSettings().getCloudManager();
 		cloud.validateAccounts();
 
+		/* create GUI */
+		/* account list */
 		accountPanel = new JPanel();
 		getContentPane().add(accountPanel, BorderLayout.WEST);
 		accountPanel.setLayout(new BorderLayout(0, 0));
@@ -382,6 +504,7 @@ public class MultiCloudDesktop extends JFrame {
 		accountList.setModel(accountModel);
 		accountList.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
 
+		/* data list */
 		dataPanel = new JPanel();
 		getContentPane().add(dataPanel, BorderLayout.CENTER);
 		dataPanel.setLayout(new BorderLayout(0, 0));
@@ -444,6 +567,7 @@ public class MultiCloudDesktop extends JFrame {
 		dataList.setModel(dataModel);
 		dataList.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
 
+		/* status panel */
 		statusPanel = new JPanel();
 		statusPanel.setMaximumSize(new Dimension(32767, 25));
 		statusPanel.setBorder(null);
@@ -478,11 +602,11 @@ public class MultiCloudDesktop extends JFrame {
 		});
 		progressPanel.add(btnAbort);
 
+		/* localization objects and background worker */
 		currentPath = new LinkedList<>();
 		infoCallback = new AccountInfoCallback(this);
 		quotaCallback = new AccountQuotaCallback(this, accountList);
 		listCallback = new FileInfoCallback(this, accountList, dataList);
-
 		messageCallback = new MessageCallback(this, lblStatus, prefs.isShowErrorDialog());
 		worker = new BackgroundWorker(this, cloud, btnAbort, progressBar, infoCallback, quotaCallback, listCallback, messageCallback);
 		worker.start();
@@ -503,6 +627,7 @@ public class MultiCloudDesktop extends JFrame {
 			}
 		});
 
+		/* shared action */
 		actPreferences = new PreferencesAction(this);
 		actExit = new ExitAction(this);
 
@@ -529,6 +654,7 @@ public class MultiCloudDesktop extends JFrame {
 
 		actAbout = new AboutAction(this, icnCloud);
 
+		/* transfer handling shortcuts */
 		dataList.getActionMap().put(TransferHandler.getCutAction().getValue(CutAction.ACT_NAME), TransferHandler.getCutAction());
 		dataList.getInputMap().put(KeyStroke.getKeyStroke(KeyEvent.VK_X, ActionEvent.CTRL_MASK), TransferHandler.getCutAction());
 		dataList.getActionMap().put(TransferHandler.getCopyAction().getValue(CopyAction.ACT_NAME), TransferHandler.getCopyAction());
@@ -536,6 +662,7 @@ public class MultiCloudDesktop extends JFrame {
 		dataList.getActionMap().put(TransferHandler.getPasteAction().getValue(PasteAction.ACT_NAME), TransferHandler.getPasteAction());
 		dataList.getInputMap().put(KeyStroke.getKeyStroke(KeyEvent.VK_V, ActionEvent.CTRL_MASK), TransferHandler.getPasteAction());
 
+		/* main and pop up menus */
 		menuBar = new JMenuBar();
 		setJMenuBar(menuBar);
 
@@ -742,13 +869,21 @@ public class MultiCloudDesktop extends JFrame {
 		mntmPropertiesPop.setAction(actProperties);
 		popupMenu.add(mntmPropertiesPop);
 
+		/* loading preferences */
 		actionPreferences(prefs);
 	}
 
+	/**
+	 * Abort currently running task.
+	 */
 	public synchronized void actionAbort() {
 		worker.abort();
 	}
 
+	/**
+	 * Action callback for adding account.
+	 * @param account Account.
+	 */
 	public synchronized void actionAddAccount(AccountData account) {
 		try {
 			cloud.createAccount(account.getName(), account.getCloud());
@@ -759,6 +894,11 @@ public class MultiCloudDesktop extends JFrame {
 		}
 	}
 
+	/**
+	 * Action callback for authorizing account.
+	 * @param account Account to be authorized.
+	 * @param dialog Authorization dialog.
+	 */
 	public synchronized void actionAuthorize(final AccountData account, final AuthorizeDialog dialog) {
 		Thread t = new Thread() {
 			/**
@@ -794,34 +934,67 @@ public class MultiCloudDesktop extends JFrame {
 		}
 	}
 
+	/**
+	 * Action callback for browsing files.
+	 * @param account Account name.
+	 * @param folder Folder to browse.
+	 * @param callback Browsing callback.
+	 * @return If the task can be executed right now.
+	 */
 	public synchronized boolean actionBrowse(String account, FileInfo folder, BrowseCallback callback) {
 		return worker.browse(account, folder, callback);
 	}
 
+	/**
+	 * Action callback for closing the application.
+	 */
 	public synchronized void actionClose() {
 		worker.terminate();
 		dispose();
 		System.exit(0);
 	}
 
+	/**
+	 * Action callback for copying files.
+	 * @param file File to be copied.
+	 */
 	public synchronized void actionCopy(FileInfo file) {
 		transferFile = file;
 		transferType = TransferType.COPY;
 	}
 
+	/**
+	 * Action callback for creating a folder.
+	 * @param name Folder name.
+	 */
 	public synchronized void actionCreateFolder(String name) {
 		worker.createFolder(currentAccount, name, currentFolder);
 	}
 
+	/**
+	 * Action callback for cutting files.
+	 * @param file File to be moved.
+	 */
 	public synchronized void actionCut(FileInfo file) {
 		transferFile = file;
 		transferType = TransferType.MOVE;
 	}
 
+	/**
+	 * Action callback for deleting files and folders.
+	 * @param file File or folder to be deleted.
+	 */
 	public synchronized void actionDelete(FileInfo file) {
 		worker.delete(currentAccount, file, currentFolder);
 	}
 
+	/**
+	 * Action callback for downloading a file.
+	 * @param file File to be downloaded.
+	 * @param target Local file to save the data to.
+	 * @param overwrite If the local file should be overwritten.
+	 * @param dialog Progress dialog.
+	 */
 	public synchronized void actionDownload(FileInfo file, File target, boolean overwrite, ProgressDialog dialog) {
 		progressListener.setDialog(dialog);
 		if (target.isDirectory()) {
@@ -844,10 +1017,22 @@ public class MultiCloudDesktop extends JFrame {
 		}
 	}
 
+	/**
+	 * Action callback for getting account information.
+	 * @param account Account name.
+	 */
 	public synchronized void actionInformation(AccountData account) {
 		worker.accountInfo(account.getName());
 	}
 
+	/**
+	 * Action callback for downloading file from multiple sources.
+	 * @param accounts Account names.
+	 * @param files Files to be downloaded.
+	 * @param target Local file to save the data to.
+	 * @param overwrite If the local file should be overwritten.
+	 * @param dialog Progress dialog.
+	 */
 	public synchronized void actionMultiDownload(String[] accounts, FileInfo[] files, File target, boolean overwrite, ProgressDialog dialog) {
 		progressListener.setDialog(dialog);
 		if (target.isDirectory()) {
@@ -873,6 +1058,13 @@ public class MultiCloudDesktop extends JFrame {
 		}
 	}
 
+	/**
+	 * Action callback for uploading file to multiple destinations.
+	 * @param accounts Account names.
+	 * @param folders Destination folders.
+	 * @param file File to be uploaded.
+	 * @param dialog Progress dialog.
+	 */
 	public synchronized void actionMultiUpload(String[] accounts, FileInfo[] folders, File file, ProgressDialog dialog) {
 		progressListener.setDialog(dialog);
 		if (file.isDirectory()) {
@@ -884,6 +1076,10 @@ public class MultiCloudDesktop extends JFrame {
 		worker.multiUpload(currentAccount, accounts, file, currentFolder, folders, dialog);
 	}
 
+	/**
+	 * Action callback for pasting a file.
+	 * @param name New name for the file.
+	 */
 	public synchronized void actionPaste(String name) {
 		switch (transferType) {
 		case COPY:
@@ -902,6 +1098,10 @@ public class MultiCloudDesktop extends JFrame {
 		transferType = TransferType.NONE;
 	}
 
+	/**
+	 * Action callback for using the preferences.
+	 * @param preferences Preferences to be applied.
+	 */
 	public synchronized void actionPreferences(Preferences preferences) {
 		prefs = preferences;
 		preferencesSave();
@@ -923,10 +1123,18 @@ public class MultiCloudDesktop extends JFrame {
 		messageCallback.setShowErrorDialog(prefs.isShowErrorDialog());
 	}
 
+	/**
+	 * Action callback for getting account quota.
+	 * @param account Account name.
+	 */
 	public synchronized void actionQuota(AccountData account) {
 		worker.accountQuota(account.getName());
 	}
 
+	/**
+	 * Action callback for refreshing account data.
+	 * @param accountName Account name.
+	 */
 	public synchronized void actionRefresh(String accountName) {
 		synchronized (lock) {
 			if (accountName != null && !accountName.equals(currentAccount)) {
@@ -937,6 +1145,10 @@ public class MultiCloudDesktop extends JFrame {
 		worker.refresh(accountName, currentFolder);
 	}
 
+	/**
+	 * Action callback for removing account.
+	 * @param account Account to be removed.
+	 */
 	public synchronized void actionRemoveAccount(AccountData account) {
 		try {
 			cloud.deleteAccount(account.getName());
@@ -947,10 +1159,20 @@ public class MultiCloudDesktop extends JFrame {
 		}
 	}
 
+	/**
+	 * Action callback for renaming file or folder.
+	 * @param name New name for the file or folder.
+	 * @param file File or folder to be renamed.
+	 */
 	public synchronized void actionRename(String name, FileInfo file) {
 		worker.rename(currentAccount, name, file, currentFolder);
 	}
 
+	/**
+	 * Action callback for renaming account.
+	 * @param original Account to be renamed.
+	 * @param renamed New name of the account.
+	 */
 	public synchronized void actionRenameAccount(AccountData original, AccountData renamed) {
 		try {
 			cloud.renameAccount(original.getName(), renamed.getName());
@@ -962,10 +1184,22 @@ public class MultiCloudDesktop extends JFrame {
 		}
 	}
 
+	/**
+	 * Action callback for searching for a file or folder.
+	 * @param account Account name.
+	 * @param query Search query.
+	 * @param callback Search callback.
+	 * @return If the task can be executed right now.
+	 */
 	public synchronized boolean actionSearch(String account, String query, SearchCallback callback) {
 		return worker.search(account, query, callback);
 	}
 
+	/**
+	 * Action callback for uploading a file.
+	 * @param file File to be uploaded.
+	 * @param dialog Progress dialog.
+	 */
 	public synchronized void actionUpload(File file, ProgressDialog dialog) {
 		progressListener.setDialog(dialog);
 		if (file.isDirectory()) {
@@ -977,38 +1211,70 @@ public class MultiCloudDesktop extends JFrame {
 		worker.upload(currentAccount, file, currentFolder, dialog);
 	}
 
+	/**
+	 * Returns the account list.
+	 * @return Account list.
+	 */
 	public JList<AccountData> getAccountList() {
 		return accountList;
 	}
 
+	/**
+	 * Returns the account manager.
+	 * @return Account manager.
+	 */
 	public AccountManager getAccountManager() {
 		return accountManager;
 	}
 
+	/**
+	 * Returns the cloud manager.
+	 * @return Cloud manager.
+	 */
 	public CloudManager getCloudManager() {
 		return cloudManager;
 	}
 
+	/**
+	 * Returns the current account.
+	 * @return Current account.
+	 */
 	public String getCurrentAccount() {
 		synchronized (lock) {
 			return currentAccount;
 		}
 	}
 
+	/**
+	 * Returns the current folder.
+	 * @return Current folder.
+	 */
 	public FileInfo getCurrentFolder() {
 		synchronized (lock) {
 			return currentFolder;
 		}
 	}
 
+	/**
+	 * Returns the data list.
+	 * @return data list.
+	 */
 	public JList<FileInfo> getDataList() {
 		return dataList;
 	}
 
+	/**
+	 * Returns the message callback.
+	 * @return Message callback.
+	 */
 	public MessageCallback getMessageCallback() {
 		return messageCallback;
 	}
 
+	/**
+	 * Returns the parent folder of the current folder.
+	 * @return Parent folder.
+	 */
 	public FileInfo getParentFolder() {
 		FileInfo parent = null;
 		synchronized (lock) {
@@ -1035,14 +1301,26 @@ public class MultiCloudDesktop extends JFrame {
 		return parent;
 	}
 
+	/**
+	 * Returns the user preferences.
+	 * @return
+	 */
 	public Preferences getPreferences() {
 		return prefs;
 	}
 
+	/**
+	 * Returns the progress listener.
+	 * @return Progress listener.
+	 */
 	public DialogProgressListener getProgressListener() {
 		return progressListener;
 	}
 
+	/**
+	 * Returns the file to be moved or copied.
+	 * @return File to be moved or copied.
+	 */
 	public synchronized FileInfo getTransferFile() {
 		return transferFile;
 	}
@@ -1074,6 +1352,9 @@ public class MultiCloudDesktop extends JFrame {
 		}
 	}
 
+	/**
+	 * Refreshes the current path.
+	 */
 	private void refreshCurrentPath() {
 		StringBuilder sb = new StringBuilder();
 		synchronized (lock) {
@@ -1103,12 +1384,21 @@ public class MultiCloudDesktop extends JFrame {
 		lblPath.setText(sb.toString());
 	}
 
+	/**
+	 * Sets the current account.
+	 * @param currentAccount Current account.
+	 */
 	public void setCurrentAccount(String currentAccount) {
 		synchronized (lock) {
 			this.currentAccount = currentAccount;
 		}
 	}
 
+	/**
+	 * Sets the current folder.
+	 * @param task Task that invoked this method.
+	 * @param currentFolder Current folder.
+	 */
 	public void setCurrentFolder(BackgroundTask task, FileInfo currentFolder) {
 		synchronized (lock) {
 			this.currentFolder = currentFolder;

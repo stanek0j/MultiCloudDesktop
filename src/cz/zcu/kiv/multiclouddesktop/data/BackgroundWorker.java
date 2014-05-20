@@ -17,37 +17,81 @@ import cz.zcu.kiv.multicloud.oauth2.OAuth2SettingsException;
 import cz.zcu.kiv.multiclouddesktop.MultiCloudDesktop;
 import cz.zcu.kiv.multiclouddesktop.dialog.ProgressDialog;
 
+/**
+ * cz.zcu.kiv.multiclouddesktop.data/BackgroundWorker.java			<br /><br />
+ *
+ * Background worker for using the multicloud library properly.
+ *
+ * @author Jaromír Staněk
+ * @version 1.0
+ *
+ */
 public class BackgroundWorker extends Thread {
 
+	/** Parent frame. */
 	private final MultiCloudDesktop parent;
+	/** Multicloud library. */
 	private final MultiCloud cloud;
+	/** Abort button. */
 	private final JButton btnAbort;
+	/** Progress bar. */
 	private final JProgressBar progressBar;
 
+	/** Account information callback. */
 	private final BackgroundCallback<AccountInfo> infoCallback;
+	/** Account quota callback. */
 	private final BackgroundCallback<AccountQuota> quotaCallback;
+	/** File list callback. */
 	private final BackgroundCallback<FileInfo> listCallback;
+	/** Message callback. */
 	private final BackgroundCallback<Boolean> messageCallback;
 
+	/** Task to be completed. */
 	private BackgroundTask task;
+	/** Progress dialog. */
 	private ProgressDialog dialog;
+	/** Search callback. */
 	private SearchCallback searchCallback;
+	/** Browsing callback. */
 	private BrowseCallback browseCallback;
+	/** User account. */
 	private String account;
+	/** User accounts. */
 	private String[] accounts;
+	/** Source file. */
 	private FileInfo src;
+	/** Source files. */
 	private FileInfo[] srcs;
+	/** Destination file. */
 	private FileInfo dst;
+	/** Destination files. */
 	private FileInfo[] dsts;
+	/** Destination file name. */
 	private String dstName;
+	/** Local file. */
 	private File localFile;
+	/** If the file should be overwritten. */
 	private boolean overwrite;
+	/** If deleted files should be displayed. */
 	private boolean showDeleted;
+	/** If shared files should be displayed. */
 	private boolean showShared;
 	/** If the thread should terminate. */
 	private boolean terminate;
+	/** If the task was aborted. */
 	private boolean aborted;
 
+	/**
+	 * Ctor with necessary parameters.
+	 * @param parent Parent frame.
+	 * @param cloud Multicloud library.
+	 * @param abort Abort button.
+	 * @param progress Progress bar.
+	 * @param infoCallback Account Information callback.
+	 * @param quotaCallback Account quota callback.
+	 * @param listCallback File list callback.
+	 * @param messageCallback Message callback.
+	 */
 	public BackgroundWorker(
 			MultiCloudDesktop parent,
 			MultiCloud cloud,
@@ -70,6 +114,9 @@ public class BackgroundWorker extends Thread {
 		this.aborted = false;
 	}
 
+	/**
+	 * Method for aborting current task.
+	 */
 	public synchronized void abort() {
 		if (task != BackgroundTask.NONE) {
 			cloud.abortOperation();
@@ -78,6 +125,11 @@ public class BackgroundWorker extends Thread {
 		}
 	}
 
+	/**
+	 * Preparing task for getting account information.
+	 * @param accountName Account name.
+	 * @return If the task was initialized.
+	 */
 	public boolean accountInfo(String accountName) {
 		boolean ready = false;
 		synchronized (this) {
@@ -91,6 +143,11 @@ public class BackgroundWorker extends Thread {
 		return ready;
 	}
 
+	/**
+	 * Preparing task for getting account quota.
+	 * @param accountName Account name.
+	 * @return If the task was initialized.
+	 */
 	public boolean accountQuota(String accountName) {
 		boolean ready = false;
 		synchronized (this) {
@@ -104,11 +161,21 @@ public class BackgroundWorker extends Thread {
 		return ready;
 	}
 
+	/**
+	 * Enabling user controls on the parent frame.
+	 */
 	private synchronized void beginOperation() {
 		progressBar.setIndeterminate(true);
 		btnAbort.setEnabled(true);
 	}
 
+	/**
+	 * Preparing task for browsing folders.
+	 * @param accountName Account name.
+	 * @param folder Folder to browse.
+	 * @param callback Browsing callback.
+	 * @return If the task was initialized.
+	 */
 	public boolean browse(String accountName, FileInfo folder, BrowseCallback callback) {
 		boolean ready = false;
 		synchronized (this) {
@@ -124,6 +191,14 @@ public class BackgroundWorker extends Thread {
 		return ready;
 	}
 
+	/**
+	 * Preparing task for copying files.
+	 * @param accounName Account name.
+	 * @param file File to be copied.
+	 * @param destination Destination to copy to.
+	 * @param destinationName New file name.
+	 * @return If the task was initialized.
+	 */
 	public boolean copy(String accounName, FileInfo file, FileInfo destination, String destinationName) {
 		boolean ready = false;
 		synchronized (this) {
@@ -140,6 +215,13 @@ public class BackgroundWorker extends Thread {
 		return ready;
 	}
 
+	/**
+	 * Preparing task for creating new folder.
+	 * @param accountName Account name.
+	 * @param name Name of the new folder.
+	 * @param folder Parent folder.
+	 * @return If the task was initialized.
+	 */
 	public boolean createFolder(String accountName, String name, FileInfo folder) {
 		boolean ready = false;
 		synchronized (this) {
@@ -155,6 +237,13 @@ public class BackgroundWorker extends Thread {
 		return ready;
 	}
 
+	/**
+	 * Preparing task for deleting file or folder.
+	 * @param accountName Account name.
+	 * @param file File or folder to be deleted.
+	 * @param folder Parent folder.
+	 * @return If the task was initialized.
+	 */
 	public boolean delete(String accountName, FileInfo file, FileInfo folder) {
 		boolean ready = false;
 		synchronized (this) {
@@ -170,6 +259,15 @@ public class BackgroundWorker extends Thread {
 		return ready;
 	}
 
+	/**
+	 * Preparing task for downloading a file.
+	 * @param accountName Account name.
+	 * @param file File to be downloaded.
+	 * @param target Local file to save the file to.
+	 * @param overwriteTarget If the local file should be overwritten.
+	 * @param progressDialog Progress dialog.
+	 * @return If the task was initialized.
+	 */
 	public boolean download(String accountName, FileInfo file, File target, boolean overwriteTarget, ProgressDialog progressDialog) {
 		boolean ready = false;
 		synchronized (this) {
@@ -187,11 +285,20 @@ public class BackgroundWorker extends Thread {
 		return ready;
 	}
 
+	/**
+	 * Disabling the user controls.
+	 */
 	private synchronized void finishOperation() {
 		progressBar.setIndeterminate(false);
 		btnAbort.setEnabled(false);
 	}
 
+	/**
+	 * Preparing task for listing folder contents.
+	 * @param accountName Account name.
+	 * @param folder Folder to be listed.
+	 * @return If the task was initialized.
+	 */
 	public boolean listFolder(String accountName, FileInfo folder) {
 		boolean ready = false;
 		synchronized (this) {
@@ -206,6 +313,11 @@ public class BackgroundWorker extends Thread {
 		return ready;
 	}
 
+	/**
+	 * Preparing task for loading basic account data.
+	 * @param accountNames Account names.
+	 * @return If the task was initialized.
+	 */
 	public boolean load(String[] accountNames) {
 		boolean ready = false;
 		synchronized (this) {
@@ -219,6 +331,14 @@ public class BackgroundWorker extends Thread {
 		return ready;
 	}
 
+	/**
+	 * Preparing task for moving a file.
+	 * @param accounName Account name.
+	 * @param file File to be moved.
+	 * @param destination Destination to move to.
+	 * @param destinationName New file name.
+	 * @return If the task was initialized.
+	 */
 	public boolean move(String accounName, FileInfo file, FileInfo destination, String destinationName) {
 		boolean ready = false;
 		synchronized (this) {
@@ -235,6 +355,15 @@ public class BackgroundWorker extends Thread {
 		return ready;
 	}
 
+	/**
+	 * Preparing task for downloading file from multiple sources.
+	 * @param accountNames Account names.
+	 * @param files Source files to be downloaded.
+	 * @param target Local file to save the file to.
+	 * @param overwriteTarget If the local file should be overwritten.
+	 * @param progressDialog Progress dialog.
+	 * @return If the task was initialized.
+	 */
 	public boolean multiDownload(String[] accountNames, FileInfo[] files, File target, boolean overwriteTarget, ProgressDialog progressDialog) {
 		boolean ready = false;
 		synchronized (this) {
@@ -252,6 +381,16 @@ public class BackgroundWorker extends Thread {
 		return ready;
 	}
 
+	/**
+	 * Preparing task for uploading file to multiple cloud storages.
+	 * @param accountName Original account name.
+	 * @param accountNames Account names.
+	 * @param file File to be uploaded.
+	 * @param folder Original destination folder.
+	 * @param folders Destination folders.
+	 * @param progressDialog Progress dialog.
+	 * @return If the task was initialized.
+	 */
 	public boolean multiUpload(String accountName, String[] accountNames, File file, FileInfo folder, FileInfo[] folders, ProgressDialog progressDialog) {
 		boolean ready = false;
 		synchronized (this) {
@@ -270,6 +409,12 @@ public class BackgroundWorker extends Thread {
 		return ready;
 	}
 
+	/**
+	 * Preparing task for refreshing account data.
+	 * @param accountName Account name.
+	 * @param folder Current folder.
+	 * @return If the task was initialized.
+	 */
 	public boolean refresh(String accountName, FileInfo folder) {
 		boolean ready = false;
 		synchronized (this) {
@@ -284,6 +429,14 @@ public class BackgroundWorker extends Thread {
 		return ready;
 	}
 
+	/**
+	 * Preparing task for  renaming a file or folder.
+	 * @param accountName Account name.
+	 * @param name New file or folder name.
+	 * @param file File or folder to be renamed.
+	 * @param folder Parent folder.
+	 * @return If the task was initialized.
+	 */
 	public boolean rename(String accountName, String name, FileInfo file, FileInfo folder) {
 		boolean ready = false;
 		synchronized (this) {
@@ -309,14 +462,12 @@ public class BackgroundWorker extends Thread {
 			synchronized (this) {
 				if (task == BackgroundTask.NONE) {
 					try {
-						System.out.println("worker waiting");
 						wait();
 					} catch (InterruptedException e) {
 						break;
 					}
 				}
 			}
-			System.out.println("worker working on " + task);
 			if (task != BackgroundTask.NONE && dialog == null) {
 				beginOperation();
 			}
@@ -675,11 +826,17 @@ public class BackgroundWorker extends Thread {
 				task = BackgroundTask.NONE;
 				dialog = null;
 				aborted = false;
-				System.out.println("worker done");
 			}
 		}
 	}
 
+	/**
+	 * Preparing task for searching for a file or folder.
+	 * @param accountName Account name.
+	 * @param query Search query.
+	 * @param callback Search callback.
+	 * @return If the task was initialized.
+	 */
 	public boolean search(String accountName, String query, SearchCallback callback) {
 		boolean ready = false;
 		synchronized (this) {
@@ -695,18 +852,33 @@ public class BackgroundWorker extends Thread {
 		return ready;
 	}
 
+	/**
+	 * Sets if deleted files should be displayed.
+	 * @param showDeleted If deleted files should be displayed.
+	 */
 	public void setShowDeleted(boolean showDeleted) {
 		this.showDeleted = showDeleted;
 	}
 
+	/**
+	 * Sets if shared files should be displayed.
+	 * @param showShared If shared files should be displayed.
+	 */
 	public void setShowShared(boolean showShared) {
 		this.showShared = showShared;
 	}
 
+	/**
+	 * Returns if the worker should terminate.
+	 * @return If the worker should terminate.
+	 */
 	public synchronized boolean shouldTerminate() {
 		return terminate;
 	}
 
+	/**
+	 * Termination of the worker.
+	 */
 	public synchronized void terminate() {
 		if (task != BackgroundTask.NONE) {
 			cloud.abortOperation();
@@ -716,6 +888,14 @@ public class BackgroundWorker extends Thread {
 		interrupt();
 	}
 
+	/**
+	 * Preparing task for uploading a file to cloud storage.
+	 * @param accountName Account name.
+	 * @param file Local file to be uploaded.
+	 * @param folder Destination folder to upload to.
+	 * @param progressDialog Progress dialog.
+	 * @return If the task was initialized.
+	 */
 	public boolean upload(String accountName, File file, FileInfo folder, ProgressDialog progressDialog) {
 		boolean ready = false;
 		synchronized (this) {
