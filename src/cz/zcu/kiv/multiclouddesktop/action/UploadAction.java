@@ -24,6 +24,7 @@ public class UploadAction extends CloudAction {
 
 	/** Name of the action. */
 	public static final String ACT_NAME = "Upload";
+
 	/** File chooser. */
 	private final JFileChooser chooser;
 

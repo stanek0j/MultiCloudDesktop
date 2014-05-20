@@ -42,6 +42,9 @@ public class FileInfoCallback implements BackgroundCallback<FileInfo> {
 	 */
 	@Override
 	public void onFinish(BackgroundTask task, String accountName, FileInfo result) {
+		if (result == null) {
+			return;
+		}
 		/* update the account list */
 		for (int i = 0; i < accountList.getModel().getSize(); i++) {
 			AccountData account = accountList.getModel().getElementAt(i);

@@ -68,6 +68,7 @@ import cz.zcu.kiv.multiclouddesktop.action.ExitAction;
 import cz.zcu.kiv.multiclouddesktop.action.FindAction;
 import cz.zcu.kiv.multiclouddesktop.action.InformationAction;
 import cz.zcu.kiv.multiclouddesktop.action.MultiDownloadAction;
+import cz.zcu.kiv.multiclouddesktop.action.MultiUploadAction;
 import cz.zcu.kiv.multiclouddesktop.action.PasteAction;
 import cz.zcu.kiv.multiclouddesktop.action.PreferencesAction;
 import cz.zcu.kiv.multiclouddesktop.action.PropertiesAction;
@@ -84,6 +85,7 @@ import cz.zcu.kiv.multiclouddesktop.data.AccountInfoCallback;
 import cz.zcu.kiv.multiclouddesktop.data.AccountQuotaCallback;
 import cz.zcu.kiv.multiclouddesktop.data.BackgroundTask;
 import cz.zcu.kiv.multiclouddesktop.data.BackgroundWorker;
+import cz.zcu.kiv.multiclouddesktop.data.BrowseCallback;
 import cz.zcu.kiv.multiclouddesktop.data.FileInfoCallback;
 import cz.zcu.kiv.multiclouddesktop.data.FileInfoListCellRenderer;
 import cz.zcu.kiv.multiclouddesktop.data.MessageCallback;
@@ -105,6 +107,10 @@ public class MultiCloudDesktop extends JFrame {
 	/** The application frame. */
 	private static MultiCloudDesktop window;
 
+	/**
+	 * Main entering point of the application.
+	 * @param args Arguments passed.
+	 */
 	public static void main(String[] args) {
 		try {
 			UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
@@ -155,6 +161,7 @@ public class MultiCloudDesktop extends JFrame {
 	private final JMenuItem mntmRefresh;
 	private final JMenuItem mntmFind;
 	private final JMenuItem mntmUpload;
+	private final JMenuItem mntmMultiUpload;
 	private final JMenuItem mntmDownload;
 	private final JMenuItem mntmMultiDownload;
 	private final JMenuItem mntmCreateFolder;
@@ -177,6 +184,7 @@ public class MultiCloudDesktop extends JFrame {
 	private final JMenuItem mntmRefreshPop;
 	private final JMenuItem mntmFindPop;
 	private final JMenuItem mntmUploadPop;
+	private final JMenuItem mntmMultiUploadPop;
 	private final JMenuItem mntmDownloadPop;
 	private final JMenuItem mntmMultiDownloadPop;
 	private final JMenuItem mntmCreateFolderPop;
@@ -200,6 +208,7 @@ public class MultiCloudDesktop extends JFrame {
 	private final Action actRefresh;
 	private final Action actFind;
 	private final Action actUpload;
+	private final Action actMultiUpload;
 	private final Action actDownload;
 	private final Action actMultiDownload;
 	private final Action actCreateFolder;
@@ -494,9 +503,10 @@ public class MultiCloudDesktop extends JFrame {
 
 		actRefresh = new RefreshAction(this);
 		actFind = new FindAction(this, icnFolderSmall, icnFileSmall);
-		actUpload = new UploadAction(this, null);
-		actDownload = new DownloadAction(this, null);
-		actMultiDownload = new MultiDownloadAction(this, null, icnFolderSmall, icnFileSmall);
+		actUpload = new UploadAction(this, new File(prefs.getFolder()));
+		actMultiUpload = new MultiUploadAction(this, new File(prefs.getFolder()), icnFolderSmall, icnFileSmall);
+		actDownload = new DownloadAction(this, new File(prefs.getFolder()));
+		actMultiDownload = new MultiDownloadAction(this, new File(prefs.getFolder()), icnFolderSmall, icnFileSmall);
 		actCreateFolder = new CreateFolderAction(this);
 		actRename = new RenameAction(this);
 		actDelete = new DeleteAction(this);
@@ -599,6 +609,10 @@ public class MultiCloudDesktop extends JFrame {
 		mntmUpload.setAction(actUpload);
 		mnOperation.add(mntmUpload);
 
+		mntmMultiUpload = new JMenuItem();
+		mntmMultiUpload.setAction(actMultiUpload);
+		mnOperation.add(mntmMultiUpload);
+
 		mntmDownload = new JMenuItem();
 		mntmDownload.setAction(actDownload);
 		mnOperation.add(mntmDownload);
@@ -656,6 +670,10 @@ public class MultiCloudDesktop extends JFrame {
 		mntmUploadPop = new JMenuItem();
 		mntmUploadPop.setAction(actUpload);
 		popupMenu.add(mntmUploadPop);
+
+		mntmMultiUploadPop = new JMenuItem();
+		mntmMultiUploadPop.setAction(actMultiUpload);
+		popupMenu.add(mntmMultiUploadPop);
 
 		mntmDownloadPop = new JMenuItem();
 		mntmDownloadPop.setAction(actDownload);
@@ -751,6 +769,10 @@ public class MultiCloudDesktop extends JFrame {
 		}
 	}
 
+	public synchronized boolean actionBrowse(String account, FileInfo folder, BrowseCallback callback) {
+		return worker.browse(account, folder, callback);
+	}
+
 	public synchronized void actionClose() {
 		worker.terminate();
 		dispose();
@@ -777,6 +799,11 @@ public class MultiCloudDesktop extends JFrame {
 
 	public synchronized void actionDownload(FileInfo file, File target, boolean overwrite, ProgressDialog dialog) {
 		progressListener.setDialog(dialog);
+		if (target.isDirectory()) {
+			prefs.setFolder(target.getPath());
+		} else {
+			prefs.setFolder(target.getParent());
+		}
 		worker.download(currentAccount, file, target, overwrite, dialog);
 		/*
 		String[] accounts = new String[5];
@@ -795,7 +822,22 @@ public class MultiCloudDesktop extends JFrame {
 
 	public synchronized void actionMultiDownload(String[] accounts, FileInfo[] files, File target, boolean overwrite, ProgressDialog dialog) {
 		progressListener.setDialog(dialog);
+		if (target.isDirectory()) {
+			prefs.setFolder(target.getPath());
+		} else {
+			prefs.setFolder(target.getParent());
+		}
 		worker.multiDownload(accounts, files, target, overwrite, dialog);
+	}
+
+	public synchronized void actionMultiUpload(String[] accounts, FileInfo[] folders, File file, ProgressDialog dialog) {
+		progressListener.setDialog(dialog);
+		if (file.isDirectory()) {
+			prefs.setFolder(file.getPath());
+		} else {
+			prefs.setFolder(file.getParent());
+		}
+		worker.multiUpload(currentAccount, accounts, file, currentFolder, folders, dialog);
 	}
 
 	public synchronized void actionPaste(String name) {
@@ -882,6 +924,11 @@ public class MultiCloudDesktop extends JFrame {
 
 	public synchronized void actionUpload(File file, ProgressDialog dialog) {
 		progressListener.setDialog(dialog);
+		if (file.isDirectory()) {
+			prefs.setFolder(file.getPath());
+		} else {
+			prefs.setFolder(file.getParent());
+		}
 		worker.upload(currentAccount, file, currentFolder, dialog);
 	}
 
@@ -1020,7 +1067,7 @@ public class MultiCloudDesktop extends JFrame {
 	public void setCurrentFolder(BackgroundTask task, FileInfo currentFolder) {
 		synchronized (lock) {
 			this.currentFolder = currentFolder;
-			if (task == BackgroundTask.LIST_FOLDER) {
+			if (task == BackgroundTask.LIST_FOLDER && currentFolder != null) {
 				if (currentFolder.getName() != null && currentFolder.getName().equals("..")) {
 					currentPath.removeLast();
 				} else {

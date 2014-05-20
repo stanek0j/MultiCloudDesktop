@@ -23,6 +23,8 @@ public class Preferences {
 	public static final boolean DEFAULT_SHOW_SHARED = false;
 	/** Default value for showing error dialogs. */
 	public static final boolean DEFAULT_SHOW_ERROR_DIALOG = true;
+	/** Default local folder for listing. */
+	public static final String DEFAULT_FOLDER = ".";
 
 	/** Display type of the items. */
 	@JsonProperty("display_type")
@@ -39,6 +41,8 @@ public class Preferences {
 	/** If the error dialogs should pop up. */
 	@JsonProperty("show_error_dialog")
 	private boolean showErrorDialog;
+	/** Local folder for listing. */
+	private String folder;
 
 	/**
 	 * Empty ctor for filling in default values.
@@ -49,6 +53,7 @@ public class Preferences {
 		showDeleted = DEFAULT_SHOW_DELETED;
 		showShared = DEFAULT_SHOW_SHARED;
 		showErrorDialog = DEFAULT_SHOW_ERROR_DIALOG;
+		folder = DEFAULT_FOLDER;
 	}
 
 	/**
@@ -57,6 +62,14 @@ public class Preferences {
 	 */
 	public ListDisplayType getDisplayType() {
 		return displayType;
+	}
+
+	/**
+	 * Returns the local folder for listing.
+	 * @return Local folder for listing.
+	 */
+	public String getFolder() {
+		return folder;
 	}
 
 	/**
@@ -97,6 +110,14 @@ public class Preferences {
 	 */
 	public void setDisplayType(ListDisplayType displayType) {
 		this.displayType = displayType;
+	}
+
+	/**
+	 * Sets the local folder for listing.
+	 * @param folder Local folder for listing.
+	 */
+	public void setFolder(String folder) {
+		this.folder = folder;
 	}
 
 	/**

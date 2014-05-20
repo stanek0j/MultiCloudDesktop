@@ -45,16 +45,20 @@ public class DeleteAction extends CloudAction {
 		if (file == null) {
 			parent.getMessageCallback().displayError("No item selected.");
 		} else {
-			int option = JOptionPane.showConfirmDialog(parent, "Are you sure you want to delete the item?", ACT_NAME, JOptionPane.YES_NO_OPTION);
-			switch (option) {
-			case JOptionPane.YES_OPTION:
-				parent.actionDelete(file);
-				break;
-			case JOptionPane.NO_OPTION:
-			case JOptionPane.CLOSED_OPTION:
-			default:
-				parent.getMessageCallback().displayMessage("Deletion canceled.");
-				break;
+			if (file.getName().equals("..")) {
+				parent.getMessageCallback().displayError("Cannot delete parent folder from this location.");
+			} else {
+				int option = JOptionPane.showConfirmDialog(parent, "Are you sure you want to delete the item?", ACT_NAME, JOptionPane.YES_NO_OPTION);
+				switch (option) {
+				case JOptionPane.YES_OPTION:
+					parent.actionDelete(file);
+					break;
+				case JOptionPane.NO_OPTION:
+				case JOptionPane.CLOSED_OPTION:
+				default:
+					parent.getMessageCallback().displayMessage("Deletion canceled.");
+					break;
+				}
 			}
 		}
 	}

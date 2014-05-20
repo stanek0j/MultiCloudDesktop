@@ -24,6 +24,8 @@ import cz.zcu.kiv.multicloud.json.FileInfo;
  */
 public class SearchDialogListCellRenderer implements ListCellRenderer<FileInfo> {
 
+	/** If path should be displayed instead of file name. */
+	private final boolean path;
 	/** Folder icon. */
 	private final ImageIcon icnFolder;
 	/** File icon. */
@@ -31,10 +33,12 @@ public class SearchDialogListCellRenderer implements ListCellRenderer<FileInfo> 
 
 	/**
 	 * Ctor with necessary parameters.
+	 * @param showPath If path should be displayed instead of file name.
 	 * @param folder Folder icon.
 	 * @param file File icon.
 	 */
-	public SearchDialogListCellRenderer(ImageIcon folder, ImageIcon file) {
+	public SearchDialogListCellRenderer(boolean showPath, ImageIcon folder, ImageIcon file) {
+		path = showPath;
 		icnFolder = folder;
 		icnFile = file;
 	}
@@ -53,7 +57,7 @@ public class SearchDialogListCellRenderer implements ListCellRenderer<FileInfo> 
 		}
 		cellIcon.setBorder(new EmptyBorder(2, 2, 2, 2));
 		JLabel cellTitle = new JLabel(value.getName());
-		if (value.getPath() != null) {
+		if (path && value.getPath() != null) {
 			cellTitle.setText(value.getPath());
 		}
 		cellTitle.setBorder(new EmptyBorder(4, 8, 4, 8));

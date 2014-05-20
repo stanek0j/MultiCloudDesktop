@@ -27,6 +27,8 @@ public class AccountData {
 	private boolean listed;
 	/** If the file is matched for this account. */
 	private boolean matched;
+	/** Path to the selected folder. */
+	private String path;
 
 	/**
 	 * Returns the cloud storage service provider for the account.
@@ -50,6 +52,14 @@ public class AccountData {
 	 */
 	public String getName() {
 		return name;
+	}
+
+	/**
+	 * Returns the path to the selected folder.
+	 * @return Path to the selected folder.
+	 */
+	public String getPath() {
+		return path;
 	}
 
 	/**
@@ -141,6 +151,14 @@ public class AccountData {
 	}
 
 	/**
+	 * Sets the path to the selected folder.
+	 * @param path Path to the selected folder.
+	 */
+	public void setPath(String path) {
+		this.path = path;
+	}
+
+	/**
 	 * Sets the total space available.
 	 * @param totalSpace Total space available.
 	 */
@@ -161,7 +179,7 @@ public class AccountData {
 	 */
 	@Override
 	public String toString() {
-		return name + ((matched) ? " (file matched)" : "");
+		return name + ((matched) ? " (file matched)" : "") + ((path != null) ? " (" + path + ")" : "");
 	}
 
 }

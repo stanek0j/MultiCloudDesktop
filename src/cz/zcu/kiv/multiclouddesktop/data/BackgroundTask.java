@@ -14,9 +14,11 @@ public enum BackgroundTask {
 	NONE,
 	LOAD,					// consists of the QUOTA and LIST_FOLDER operation for all cloud storages
 	REFRESH,				// consists of the QUOTA and LIST_FOLDER operation
+	BROWSE,					// same as LIST_FOLDER with the exception of custom callback
 	INFO,
 	QUOTA,
 	UPLOAD,
+	MULTI_UPLOAD,
 	DOWNLOAD,
 	MULTI_DOWNLOAD,
 	LIST_FOLDER,

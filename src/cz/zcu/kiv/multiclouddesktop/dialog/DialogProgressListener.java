@@ -108,14 +108,14 @@ public class DialogProgressListener extends ProgressListener {
 	@Override
 	protected void onProgress() {
 		if (progressBar != null) {
-			String transferred = Utils.formatSize(getTransferred(), UnitsFormat.BINARY);
+			String transferred = Utils.formatSize((getTransferred() / getDivisor()), UnitsFormat.BINARY);
 			String total = Utils.formatSize(getTotalSize(), UnitsFormat.BINARY);
-			int percent = (int) (100.0 * ((double) getTransferred() / (double) getTotalSize()));
+			int percent = (int) (100.0 * ((double) getTransferred() / getDivisor()) / getTotalSize());
 			lblSize.setText(transferred + " / " + total);
 			lblPercent.setText(String.valueOf(percent) + "%");
 			progressBar.setValue(percent);
 		}
-		if (getTransferred() == getTotalSize()) {
+		if ((getTransferred() / getDivisor()) == getTotalSize()) {
 			onFinish();
 		}
 	}

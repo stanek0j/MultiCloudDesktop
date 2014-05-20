@@ -104,6 +104,7 @@ public class MultiDownloadAction extends CloudAction {
 				/* find matches on other clouds */
 				SearchDialog sDialog = new SearchDialog(parent, ACT_NAME, file, null, accounts, icnFolder, icnFile);
 				sDialog.setVisible(true);
+				option = sDialog.getOption();
 				switch (option) {
 				case JOptionPane.OK_OPTION:
 					break;

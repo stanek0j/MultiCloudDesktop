@@ -9,8 +9,13 @@ import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.ItemEvent;
 import java.awt.event.ItemListener;
+import java.awt.event.KeyAdapter;
+import java.awt.event.KeyEvent;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
+import java.util.LinkedList;
 
 import javax.swing.BoxLayout;
 import javax.swing.DefaultListModel;
@@ -23,48 +28,46 @@ import javax.swing.JList;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
-import javax.swing.JTextField;
 import javax.swing.ListSelectionModel;
 import javax.swing.ScrollPaneConstants;
+import javax.swing.SwingUtilities;
 import javax.swing.border.EmptyBorder;
-import javax.swing.event.ListSelectionEvent;
-import javax.swing.event.ListSelectionListener;
 
+import cz.zcu.kiv.multicloud.filesystem.FileType;
 import cz.zcu.kiv.multicloud.json.AccountSettings;
 import cz.zcu.kiv.multicloud.json.FileInfo;
+import cz.zcu.kiv.multicloud.utils.Utils;
 import cz.zcu.kiv.multiclouddesktop.MultiCloudDesktop;
 import cz.zcu.kiv.multiclouddesktop.data.AccountData;
-import cz.zcu.kiv.multiclouddesktop.data.SearchCallback;
+import cz.zcu.kiv.multiclouddesktop.data.BrowseCallback;
 import cz.zcu.kiv.multiclouddesktop.data.SearchDialogListCellRenderer;
 
 /**
- * cz.zcu.kiv.multiclouddesktop.dialog/SearchDialog.java			<br /><br />
+ * cz.zcu.kiv.multiclouddesktop.dialog/BrowseDialog.java			<br /><br />
  *
- * Dialog for searching for files.
+ * Dialog for browsing and selecting folders.
  *
  * @author Jaromír Staněk
  * @version 1.0
  *
  */
-public class SearchDialog extends JDialog {
+public class BrowseDialog extends JDialog {
 
 	/** Serialization constant. */
-	private static final long serialVersionUID = -4804883317598301581L;
+	private static final long serialVersionUID = -2251532826283188410L;
 
 	/** Abort button. */
 	private final JButton btnAbort;
 	/** Cancel button. */
 	private final JButton btnCancel;
-	/** Find button. */
-	private final JButton btnFind;
 	/** Confirmation button. */
 	private final JButton btnOk;
+	/** Refresh button. */
+	private final JButton btnRefresh;
 	/** Combo box for choosing account. */
 	private final JComboBox<AccountData> cmbAccount;
 	/** Label with description for combo box. */
 	private final JLabel lblAccount;
-	/** Label with description for query text field. */
-	private final JLabel lblQuery;
 	/** Label for list of results. */
 	private final JLabel lblResults;
 	/** Label for status label. */
@@ -77,21 +80,15 @@ public class SearchDialog extends JDialog {
 	private final JPanel accountPanel;
 	/** Panel for holding buttons. */
 	private final JPanel buttonPanel;
-	/** Panel for entering search query. */
-	private final JPanel queryPanel;
 	/** Panel for displaying results. */
 	private final JPanel resultsPanel;
 	/** Panel for displaying status. */
 	private final JPanel statusPanel;
-	/** Text field for entering search query. */
-	private final JTextField txtQuery;
 
 	/** Parent frame. */
 	private final MultiCloudDesktop parent;
-	/** File to be matched. */
-	private final FileInfo match;
-	/** Search callback. */
-	private final SearchCallback callback;
+	/** List callback. */
+	private final BrowseCallback callback;
 	/** Return code from the dialog. */
 	private int option;
 	/** Array of accounts to choose from. */
@@ -100,23 +97,29 @@ public class SearchDialog extends JDialog {
 	private final FileInfo[] output;
 	/** Output index to be skipped. */
 	private int skipIndex;
+	/** Currently displayed folder. */
+	private FileInfo currentFolder;
+	/** Current path. */
+	private final LinkedList<FileInfo> currentPath;
+	/** If the folder was refreshed. */
+	private boolean refresh;
 
 	/**
 	 * Ctor with necessary parameters.
 	 * @param parentFrame Parent frame.
 	 * @param title Dialog title.
-	 * @param matchFile File to search for.
-	 * @param matchString String to search for.
+	 * @param original Original folder selected.
 	 * @param selectedAccounts Accounts to be searched.
 	 * @param icnFolder Folder icon.
 	 * @param icnFile File icon.
 	 */
-	public SearchDialog(MultiCloudDesktop parentFrame, String title, FileInfo matchFile, String matchString, AccountData[] selectedAccounts, ImageIcon folder, ImageIcon file) {
+	public BrowseDialog(MultiCloudDesktop parentFrame, String title, FileInfo original, AccountData[] selectedAccounts, ImageIcon folder, ImageIcon file) {
 		parent = parentFrame;
-		this.match = matchFile;
 		this.accounts = selectedAccounts;
 		this.option = JOptionPane.DEFAULT_OPTION;
 		this.skipIndex = -1;
+		this.currentPath = new LinkedList<>();
+		this.currentFolder = null;
 
 		lblAccount = new JLabel("Account:");
 		lblAccount.setBorder(new EmptyBorder(0, 0, 0, 8));
@@ -129,7 +132,7 @@ public class SearchDialog extends JDialog {
 					cmbAccount.addItem(selectedAccounts[i]);
 				} else {
 					skipIndex = i;
-					output[i] = matchFile;
+					output[i] = original;
 				}
 			}
 		} else {
@@ -149,53 +152,49 @@ public class SearchDialog extends JDialog {
 			 */
 			@Override
 			public void itemStateChanged(ItemEvent event) {
-				if (match != null) {
+				if (event.getStateChange() == ItemEvent.SELECTED) {
 					((DefaultListModel<FileInfo>) resultsList.getModel()).clear();
+					clearCurrnetPath();
+					browse(null, false);
 				}
 			}
 		});
-		lblQuery = new JLabel("Query:");
-		lblQuery.setBorder(new EmptyBorder(0, 0, 0, 8));
-		txtQuery = new JTextField();
-		if (matchFile != null) {
-			txtQuery.setText(matchFile.getName());
-		} else if (matchString != null) {
-			txtQuery.setText(matchString);
-		}
-		txtQuery.setPreferredSize(new Dimension(300, txtQuery.getPreferredSize().height));
 		accountPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
 		accountPanel.setBorder(new EmptyBorder(8, 8, 2, 8));
 		accountPanel.add(lblAccount);
 		accountPanel.add(cmbAccount);
-		queryPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
-		queryPanel.setBorder(new EmptyBorder(2, 8, 2, 8));
-		queryPanel.add(lblQuery);
-		queryPanel.add(txtQuery);
-		lblResults = new JLabel("Results:");
+		lblResults = new JLabel("Folder:");
 		lblResults.setBorder(new EmptyBorder(0, 0, 0, 8));
 		lblResults.setVerticalAlignment(JLabel.TOP);
 		resultsList = new JList<FileInfo>();
 		resultsList.setVisibleRowCount(-1);
-		resultsList.setCellRenderer(new SearchDialogListCellRenderer(true, folder, file));
+		resultsList.setCellRenderer(new SearchDialogListCellRenderer(false, folder, file));
 		resultsList.setModel(new DefaultListModel<FileInfo>());
 		resultsList.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
-		resultsList.addListSelectionListener(new ListSelectionListener() {
+		resultsList.addKeyListener(new KeyAdapter() {
 			/**
 			 * {@inheritDoc}
 			 */
 			@Override
-			public void valueChanged(ListSelectionEvent event) {
-				int index = cmbAccount.getSelectedIndex();
-				if (index > -1 && event.getValueIsAdjusting()) {
-					if (index >= skipIndex) {
-						index++;
+			public void keyPressed(KeyEvent event) {
+				FileInfo file = resultsList.getSelectedValue();
+				if (event.getKeyCode() == KeyEvent.VK_SPACE || event.getKeyCode() == KeyEvent.VK_ENTER) {
+					if (file != null && file.getFileType() == FileType.FOLDER) {
+						browse(file, false);
 					}
-					output[index] = resultsList.getSelectedValue();
-					AccountData selected = (AccountData) cmbAccount.getSelectedItem();
-					if (selected != null && match != null && accounts != null) {
-						selected.setMatched(true);
-						cmbAccount.revalidate();
-						cmbAccount.repaint();
+				}
+			}
+		});
+		resultsList.addMouseListener(new MouseAdapter() {
+			/**
+			 * {@inheritDoc}
+			 */
+			@Override
+			public void mouseClicked(MouseEvent event) {
+				FileInfo file = resultsList.getSelectedValue();
+				if (SwingUtilities.isLeftMouseButton(event) && event.getClickCount() == 2) {
+					if (file != null && file.getFileType() == FileType.FOLDER) {
+						browse(file, false);
 					}
 				}
 			}
@@ -210,41 +209,27 @@ public class SearchDialog extends JDialog {
 		resultsPanel.add(resultsPane, BorderLayout.CENTER);
 		lblStatus = new JLabel("Status:");
 		lblStatus.setBorder(new EmptyBorder(0, 0, 0, 8));
-		lblStatusText = new JLabel("Enter search query.");
+		lblStatusText = new JLabel("Refresh to show files.");
 		lblStatusText.setBorder(new EmptyBorder(0, 4, 0, 4));
 		statusPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
 		statusPanel.setBorder(new EmptyBorder(2, 8, 2, 8));
 		statusPanel.add(lblStatus);
 		statusPanel.add(lblStatusText);
-		int labelWidth = (lblQuery.getPreferredSize().width > lblAccount.getPreferredSize().width) ? lblQuery.getPreferredSize().width : lblAccount.getPreferredSize().width;
-		labelWidth = (labelWidth > lblResults.getPreferredSize().width) ? labelWidth : lblResults.getPreferredSize().width;
+		int labelWidth = (lblResults.getPreferredSize().width > lblAccount.getPreferredSize().width) ? lblResults.getPreferredSize().width : lblAccount.getPreferredSize().width;
 		labelWidth = (labelWidth > lblStatus.getPreferredSize().width) ? labelWidth : lblStatus.getPreferredSize().width;
-		lblQuery.setPreferredSize(new Dimension(labelWidth, lblQuery.getPreferredSize().height));
 		lblAccount.setPreferredSize(new Dimension(labelWidth, lblAccount.getPreferredSize().height));
 		lblResults.setPreferredSize(new Dimension(labelWidth, lblResults.getPreferredSize().height));
 		lblStatus.setPreferredSize(new Dimension(labelWidth, lblStatus.getPreferredSize().height));
-		callback = new SearchCallback(matchFile, this);
-		btnFind = new JButton("Find");
-		btnFind.setMargin(new Insets(4, 20, 4, 20));
-		btnFind.addActionListener(new ActionListener() {
+		callback = new BrowseCallback(this, resultsList);
+		btnRefresh = new JButton("Refresh");
+		btnRefresh.setMargin(new Insets(4, 20, 4, 20));
+		btnRefresh.addActionListener(new ActionListener() {
 			/**
 			 * {@inheritDoc}
 			 */
 			@Override
 			public void actionPerformed(ActionEvent event) {
-				if (validateFields()) {
-					AccountData account = (AccountData) cmbAccount.getSelectedItem();
-					lblStatusText.setForeground(Color.BLACK);
-					lblStatusText.setText("Searching...");
-					cmbAccount.setEnabled(false);
-					txtQuery.setEnabled(false);
-					btnFind.setEnabled(false);
-					btnOk.setEnabled(false);
-					btnCancel.setEnabled(false);
-					if (!parent.actionSearch(account.getName(), txtQuery.getText(), callback)) {
-						finishSearch("Wait for other operation to finish.");
-					}
-				}
+				browse(getCurrentFolder(), true);
 			}
 		});
 		btnAbort = new JButton("Abort");
@@ -256,7 +241,7 @@ public class SearchDialog extends JDialog {
 			@Override
 			public void actionPerformed(ActionEvent event) {
 				parent.actionAbort();
-				finishSearch("Aborted.");
+				finishBrowse("Aborted.");
 			}
 		});
 		btnOk = new JButton("OK");
@@ -287,7 +272,7 @@ public class SearchDialog extends JDialog {
 		});
 		buttonPanel = new JPanel();
 		buttonPanel.setBorder(new EmptyBorder(2, 0, 4, 0));
-		buttonPanel.add(btnFind);
+		buttonPanel.add(btnRefresh);
 		buttonPanel.add(btnAbort);
 		buttonPanel.add(btnOk);
 		buttonPanel.add(btnCancel);
@@ -308,7 +293,6 @@ public class SearchDialog extends JDialog {
 		});
 
 		add(accountPanel);
-		add(queryPanel);
 		add(resultsPanel);
 		add(statusPanel);
 		add(buttonPanel);
@@ -318,24 +302,90 @@ public class SearchDialog extends JDialog {
 	}
 
 	/**
-	 * Enables all the fields for filling in the next request.
+	 * Browses the selected folder.
+	 * @param file Folder to browse.
+	 */
+	private synchronized void browse(FileInfo file, boolean refresh) {
+		this.refresh = refresh;
+		AccountData account = (AccountData) cmbAccount.getSelectedItem();
+		lblStatusText.setForeground(Color.BLACK);
+		lblStatusText.setText("Listing folder...");
+		cmbAccount.setEnabled(false);
+		btnRefresh.setEnabled(false);
+		btnOk.setEnabled(false);
+		btnCancel.setEnabled(false);
+		if (!parent.actionBrowse(account.getName(), file, callback)) {
+			finishBrowse("Wait for other operation to finish.");
+		}
+
+	}
+
+	/**
+	 * Clears the current path.
+	 */
+	public synchronized void clearCurrnetPath() {
+		currentFolder = null;
+		currentPath.clear();
+	}
+
+	/**
+	 * Enables all the fields for browsing to the next destination.
 	 * @param result Text describing the result.
 	 */
-	public synchronized void finishSearch(String result) {
+	public synchronized void finishBrowse(String result) {
 		if (result == null) {
 			lblStatusText.setForeground(Color.RED);
-			lblStatusText.setText("Search failed.");
+			lblStatusText.setText("Listing folder failed.");
 		} else {
 			lblStatusText.setForeground(Color.BLACK);
 			lblStatusText.setText(result);
 		}
+		int index = cmbAccount.getSelectedIndex();
+		if (index > -1) {
+			if (index >= skipIndex) {
+				index++;
+			}
+			output[index] = getCurrentFolder();
+			AccountData selected = (AccountData) cmbAccount.getSelectedItem();
+			if (selected != null && accounts != null) {
+				selected.setPath(getCurrentPath());
+				cmbAccount.revalidate();
+				cmbAccount.repaint();
+			}
+		}
 		cmbAccount.setEnabled(true);
-		txtQuery.setEnabled(true);
-		btnFind.setEnabled(true);
+		btnRefresh.setEnabled(true);
 		btnOk.setEnabled(true);
 		btnCancel.setEnabled(true);
 		resultsList.revalidate();
 		resultsList.repaint();
+		refresh = false;
+	}
+
+	/**
+	 * Returns the current folder.
+	 * @return Current folder.
+	 */
+	public synchronized FileInfo getCurrentFolder() {
+		return currentFolder;
+	}
+
+	/**
+	 * Returns the current path;
+	 * @return Current path;
+	 */
+	private synchronized String getCurrentPath() {
+		StringBuilder sb = new StringBuilder();
+		for (FileInfo f: currentPath) {
+			if (!Utils.isNullOrEmpty(f.getName())) {
+				sb.append("/");
+				sb.append(f.getName());
+			}
+		}
+		if (sb.length() == 0) {
+			sb.append("/");
+		}
+		return sb.toString();
 	}
 
 	/**
@@ -355,27 +405,58 @@ public class SearchDialog extends JDialog {
 	}
 
 	/**
-	 * Returns the file data gathered.
-	 * @return File data gathered.
+	 * Returns the folder data gathered.
+	 * @return Folder data gathered.
 	 */
 	public FileInfo[] getOutput() {
 		return output;
 	}
 
 	/**
-	 * Validates the input data from the user.
-	 * @return If the data passed the validation.
+	 * Returns the parent folder.
+	 * @return Parent folder.
 	 */
-	private boolean validateFields() {
-		boolean valid = true;
-		/* empty query string */
-		if (txtQuery.getText().trim().isEmpty()) {
-			lblStatusText.setForeground(Color.RED);
-			lblStatusText.setText("Search query cannot be empty.");
-			valid = false;
+	public synchronized FileInfo getParentFolder() {
+		FileInfo parent = null;
+		if (currentPath.size() > 0) {
+			FileInfo p = currentPath.get(currentPath.size() - 1);
+			if (currentPath.size() > 1) {
+				p = currentPath.get(currentPath.size() - 2);
+			}
+			parent = new FileInfo();
+			parent.setContent(p.getContent());
+			parent.setDeleted(p.isDeleted());
+			parent.setFileType(p.getFileType());
+			parent.setId(p.getId());
+			parent.setIsRoot(p.isRoot());
+			parent.setMimeType(p.getMimeType());
+			parent.setName("..");
+			parent.setParents(p.getParents());
+			parent.setPath(p.getPath());
+			parent.setShared(p.isShared());
+			parent.setSize(p.getSize());
 		}
-		return valid;
+		return parent;
 	}
+
+	/**
+	 * Sets the current folder.
+	 * @param currentFolder Current folder.
+	 */
+	public synchronized void setCurrentFolder(FileInfo currentFolder) {
+		this.currentFolder = currentFolder;
+		if (!refresh) {
+			if (currentFolder.getName() != null && currentFolder.getName().equals("..")) {
+				currentPath.removeLast();
+			} else {
+				currentPath.add(currentFolder);
+			}
+		}
+		if (currentPath.isEmpty()) {
+			currentPath.add(currentFolder);
+		}
+	}
+
 
 	/**
 	 * Validates the stored data for output.
@@ -383,12 +464,10 @@ public class SearchDialog extends JDialog {
 	 */
 	private boolean validateOutput() {
 		boolean valid = true;
-		if (match != null) {
-			valid = false;
-			for (FileInfo out: output) {
-				if (out != null) {
-					valid = true;
-				}
+		valid = false;
+		for (FileInfo out: output) {
+			if (out != null) {
+				valid = true;
 			}
 		}
 		return valid;
