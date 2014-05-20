@@ -1,6 +1,7 @@
 package cz.zcu.kiv.multiclouddesktop;
 
 import java.awt.BorderLayout;
+import java.awt.Component;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.Font;
@@ -23,6 +24,7 @@ import java.util.List;
 
 import javax.imageio.ImageIO;
 import javax.swing.Action;
+import javax.swing.Box;
 import javax.swing.DefaultListModel;
 import javax.swing.ImageIcon;
 import javax.swing.JButton;
@@ -57,6 +59,7 @@ import cz.zcu.kiv.multicloud.oauth2.OAuth2SettingsException;
 import cz.zcu.kiv.multicloud.utils.AccountManager;
 import cz.zcu.kiv.multicloud.utils.CloudManager;
 import cz.zcu.kiv.multicloud.utils.Utils;
+import cz.zcu.kiv.multiclouddesktop.action.AboutAction;
 import cz.zcu.kiv.multiclouddesktop.action.AddAccountAction;
 import cz.zcu.kiv.multiclouddesktop.action.AuthorizeAction;
 import cz.zcu.kiv.multiclouddesktop.action.CopyAction;
@@ -103,7 +106,7 @@ public class MultiCloudDesktop extends JFrame {
 	/** Default file for holding preferences. */
 	public static final String PREFS_FILE = "preferences.json";
 	/** Application name. */
-	private static final String APP_NAME = "MultiCloudDesktop";
+	public static final String APP_NAME = "MultiCloudDesktop";
 	/** The application frame. */
 	private static MultiCloudDesktop window;
 
@@ -172,6 +175,11 @@ public class MultiCloudDesktop extends JFrame {
 	private final JMenuItem mntmPaste;
 	private final JMenuItem mntmProperties;
 
+	private final Component horizontalGlue;
+
+	private final JMenu mnHelp;
+	private final JMenuItem mntmAbout;
+
 	private final JPopupMenu popupAccountMenu;
 	private final JMenuItem mntmAddAccountPop;
 	private final JMenuItem mntmAuthorizePop;
@@ -219,6 +227,8 @@ public class MultiCloudDesktop extends JFrame {
 	private final Action actPaste;
 	private final Action actProperties;
 
+	private final Action actAbout;
+
 	private final MultiCloud cloud;
 	private final AccountManager accountManager;
 	private final CloudManager cloudManager;
@@ -260,6 +270,7 @@ public class MultiCloudDesktop extends JFrame {
 		ImageIcon icnFolderSmall = null;
 		ImageIcon icnFile = null;
 		ImageIcon icnFileSmall = null;
+		ImageIcon icnCloud = null;
 		try {
 			List<BufferedImage> images = new ArrayList<>();
 			images.add(ImageIO.read(loader.getResourceAsStream("cloud_16.png")));
@@ -278,6 +289,7 @@ public class MultiCloudDesktop extends JFrame {
 			icnFolderSmall = new ImageIcon(ImageIO.read(loader.getResourceAsStream("folder_small.png")));
 			icnFile = new ImageIcon(ImageIO.read(loader.getResourceAsStream("file.png")));
 			icnFileSmall = new ImageIcon(ImageIO.read(loader.getResourceAsStream("file_small.png")));
+			icnCloud = new ImageIcon(ImageIO.read(loader.getResourceAsStream("cloud_96.png")));
 		} catch (IOException e1) {
 			e1.printStackTrace();
 		}
@@ -515,6 +527,8 @@ public class MultiCloudDesktop extends JFrame {
 		actPaste = new PasteAction(this);
 		actProperties = new PropertiesAction(this);
 
+		actAbout = new AboutAction(this, icnCloud);
+
 		dataList.getActionMap().put(TransferHandler.getCutAction().getValue(CutAction.ACT_NAME), TransferHandler.getCutAction());
 		dataList.getInputMap().put(KeyStroke.getKeyStroke(KeyEvent.VK_X, ActionEvent.CTRL_MASK), TransferHandler.getCutAction());
 		dataList.getActionMap().put(TransferHandler.getCopyAction().getValue(CopyAction.ACT_NAME), TransferHandler.getCopyAction());
@@ -654,6 +668,17 @@ public class MultiCloudDesktop extends JFrame {
 		mntmProperties = new JMenuItem();
 		mntmProperties.setAction(actProperties);
 		mnOperation.add(mntmProperties);
+
+		horizontalGlue = Box.createHorizontalGlue();
+		menuBar.add(horizontalGlue);
+
+		mnHelp = new JMenu("Help");
+		mnHelp.setMargin(new Insets(4, 4, 4, 4));
+		menuBar.add(mnHelp);
+
+		mntmAbout = new JMenuItem();
+		mntmAbout.setAction(actAbout);
+		mnHelp.add(mntmAbout);
 
 		popupMenu = new JPopupMenu();
 
@@ -804,16 +829,19 @@ public class MultiCloudDesktop extends JFrame {
 		} else {
 			prefs.setFolder(target.getParent());
 		}
-		worker.download(currentAccount, file, target, overwrite, dialog);
-		/*
-		String[] accounts = new String[5];
-		FileInfo[] files = new FileInfo[5];
-		for (int i = 0; i < 5; i++) {
-			accounts[i] = currentAccount;
-			files[i] = file;
+		preferencesSave();
+		int threads = prefs.getThreadsPerAccount();
+		if (threads == 1) {
+			worker.download(currentAccount, file, target, overwrite, dialog);
+		} else {
+			String[] accounts = new String[threads];
+			FileInfo[] files = new FileInfo[threads];
+			for (int i = 0; i < threads; i++) {
+				accounts[i] = currentAccount;
+				files[i] = file;
+			}
+			worker.multiDownload(accounts, files, target, overwrite, dialog);
 		}
-		worker.multiDownload(accounts, files, target, overwrite, dialog);
-		 */
 	}
 
 	public synchronized void actionInformation(AccountData account) {
@@ -827,7 +855,22 @@ public class MultiCloudDesktop extends JFrame {
 		} else {
 			prefs.setFolder(target.getParent());
 		}
-		worker.multiDownload(accounts, files, target, overwrite, dialog);
+		preferencesSave();
+		int threads = prefs.getThreadsPerAccount();
+		if (threads == 1) {
+			worker.multiDownload(accounts, files, target, overwrite, dialog);
+		} else {
+			String[] a = new String[accounts.length * threads];
+			FileInfo[] f = new FileInfo[files.length * threads];
+			for (int i = 0; i < threads; i++) {
+				for (int j = 0; j < accounts.length; j++) {
+					int index = i * accounts.length + j;
+					a[index] = accounts[j];
+					f[index] = files[j];
+				}
+			}
+			worker.multiDownload(a, f, target, overwrite, dialog);
+		}
 	}
 
 	public synchronized void actionMultiUpload(String[] accounts, FileInfo[] folders, File file, ProgressDialog dialog) {
@@ -837,6 +880,7 @@ public class MultiCloudDesktop extends JFrame {
 		} else {
 			prefs.setFolder(file.getParent());
 		}
+		preferencesSave();
 		worker.multiUpload(currentAccount, accounts, file, currentFolder, folders, dialog);
 	}
 
@@ -929,6 +973,7 @@ public class MultiCloudDesktop extends JFrame {
 		} else {
 			prefs.setFolder(file.getParent());
 		}
+		preferencesSave();
 		worker.upload(currentAccount, file, currentFolder, dialog);
 	}
 
