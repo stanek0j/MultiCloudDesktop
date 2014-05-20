@@ -374,7 +374,6 @@ public class MultiCloudDesktop extends JFrame {
 		transferType = TransferType.NONE;
 		lock = new Object();
 		json = Json.getInstance();
-		prefs = preferencesLoad();
 
 		setMinimumSize(new Dimension(720, 480));
 		setPreferredSize(new Dimension(720, 480));
@@ -603,6 +602,7 @@ public class MultiCloudDesktop extends JFrame {
 		progressPanel.add(btnAbort);
 
 		/* localization objects and background worker */
+		prefs = preferencesLoad();
 		currentPath = new LinkedList<>();
 		infoCallback = new AccountInfoCallback(this);
 		quotaCallback = new AccountQuotaCallback(this, accountList);
@@ -1335,7 +1335,9 @@ public class MultiCloudDesktop extends JFrame {
 			ObjectMapper mapper = json.getMapper();
 			loadedPrefs = mapper.readValue(new File(PREFS_FILE), Preferences.class);
 		} catch (IOException e) {
-			messageCallback.displayError("Preferences file not found.");
+			if (messageCallback != null) {
+				messageCallback.displayError("Preferences file not found.");
+			}
 		}
 		return loadedPrefs;
 	}
