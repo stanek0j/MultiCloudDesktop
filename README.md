@@ -1,5 +1,5 @@
-MultiCloudClient
-================
+MultiCloudDesktop
+=================
 
 Application for sharing files among multiple cloud storage service providers.
 Unified interface for accessing the files and features for faster downloading.
