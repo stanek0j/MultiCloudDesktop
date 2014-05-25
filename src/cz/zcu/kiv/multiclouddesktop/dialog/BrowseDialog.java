@@ -457,7 +457,6 @@ public class BrowseDialog extends JDialog {
 		}
 	}
 
-
 	/**
 	 * Validates the stored data for output.
 	 * @return If the stored data passed the validation.

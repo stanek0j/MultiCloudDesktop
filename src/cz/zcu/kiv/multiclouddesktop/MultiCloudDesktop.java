@@ -279,7 +279,7 @@ public class MultiCloudDesktop extends JFrame {
 	/** Properties menu item. */
 	private final JMenuItem mntmPropertiesPop;
 
-	/** Action for diplaying preferences. */
+	/** Action for displaying preferences. */
 	private final Action actPreferences;
 	/** Action for exiting application. */
 	private final Action actExit;
@@ -388,6 +388,8 @@ public class MultiCloudDesktop extends JFrame {
 		ImageIcon icnFolderSmall = null;
 		ImageIcon icnFile = null;
 		ImageIcon icnFileSmall = null;
+		ImageIcon icnBadFile = null;
+		ImageIcon icnBadFileSmall = null;
 		ImageIcon icnCloud = null;
 		try {
 			List<BufferedImage> images = new ArrayList<>();
@@ -407,9 +409,11 @@ public class MultiCloudDesktop extends JFrame {
 			icnFolderSmall = new ImageIcon(ImageIO.read(loader.getResourceAsStream("folder_small.png")));
 			icnFile = new ImageIcon(ImageIO.read(loader.getResourceAsStream("file.png")));
 			icnFileSmall = new ImageIcon(ImageIO.read(loader.getResourceAsStream("file_small.png")));
+			icnBadFile = new ImageIcon(ImageIO.read(loader.getResourceAsStream("file.png")));
+			icnBadFileSmall = new ImageIcon(ImageIO.read(loader.getResourceAsStream("file_small.png")));
 			icnCloud = new ImageIcon(ImageIO.read(loader.getResourceAsStream("cloud_96.png")));
-		} catch (IOException e1) {
-			e1.printStackTrace();
+		} catch (IOException e) {
+			e.printStackTrace();
 		}
 
 		/* initialize library */
@@ -1065,7 +1069,7 @@ public class MultiCloudDesktop extends JFrame {
 	 * @param file File to be uploaded.
 	 * @param dialog Progress dialog.
 	 */
-	public synchronized void actionMultiUpload(String[] accounts, FileInfo[] folders, File file, ProgressDialog dialog) {
+	public synchronized void actionMultiUpload(String[] accounts, FileInfo[] folders, FileInfo[] existing, File file, ProgressDialog dialog) {
 		progressListener.setDialog(dialog);
 		if (file.isDirectory()) {
 			prefs.setFolder(file.getPath());
@@ -1073,7 +1077,7 @@ public class MultiCloudDesktop extends JFrame {
 			prefs.setFolder(file.getParent());
 		}
 		preferencesSave();
-		worker.multiUpload(currentAccount, accounts, file, currentFolder, folders, dialog);
+		worker.multiUpload(currentAccount, accounts, file, currentFolder, folders, existing, dialog);
 	}
 
 	/**
@@ -1199,8 +1203,10 @@ public class MultiCloudDesktop extends JFrame {
 	 * Action callback for uploading a file.
 	 * @param file File to be uploaded.
 	 * @param dialog Progress dialog.
+	 * @param existing Existing file to be updated.
+	 * @param overwrite If the file contents should be updated.
 	 */
-	public synchronized void actionUpload(File file, ProgressDialog dialog) {
+	public synchronized void actionUpload(File file, ProgressDialog dialog, FileInfo existing, boolean overwrite) {
 		progressListener.setDialog(dialog);
 		if (file.isDirectory()) {
 			prefs.setFolder(file.getPath());
@@ -1208,7 +1214,7 @@ public class MultiCloudDesktop extends JFrame {
 			prefs.setFolder(file.getParent());
 		}
 		preferencesSave();
-		worker.upload(currentAccount, file, currentFolder, dialog);
+		worker.upload(currentAccount, file, currentFolder, existing, overwrite, dialog);
 	}
 
 	/**

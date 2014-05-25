@@ -4,7 +4,10 @@ import java.awt.event.ActionEvent;
 import java.io.File;
 
 import javax.swing.JFileChooser;
+import javax.swing.JOptionPane;
 
+import cz.zcu.kiv.multicloud.filesystem.FileType;
+import cz.zcu.kiv.multicloud.json.FileInfo;
 import cz.zcu.kiv.multiclouddesktop.MultiCloudDesktop;
 import cz.zcu.kiv.multiclouddesktop.dialog.ProgressDialog;
 
@@ -51,9 +54,32 @@ public class UploadAction extends CloudAction {
 			int option = chooser.showOpenDialog(parent);
 			switch (option) {
 			case JFileChooser.APPROVE_OPTION:
+				boolean update = false;
 				File file = chooser.getSelectedFile();
+				FileInfo remote = parent.getCurrentFolder();
+				FileInfo existing = null;
+				for (FileInfo content: remote.getContent()) {
+					if (content.getFileType() == FileType.FILE && content.getName().equals(file.getName())) {
+						existing = content;
+						option = JOptionPane.showConfirmDialog(parent, "Do you want to overwrite the remote file?", ACT_NAME, JOptionPane.YES_NO_OPTION);
+						switch (option) {
+						case JOptionPane.YES_OPTION:
+							update = true;
+							break;
+						case JOptionPane.NO_OPTION:
+						case JOptionPane.CLOSED_OPTION:
+						default:
+							update = false;
+							if (!parent.getPreferences().isUploadNoOverwrite()) {
+								parent.getMessageCallback().displayMessage("Upload cancelled - overwriting not allowed.");
+								return;
+							}
+							break;
+						}
+					}
+				}
 				ProgressDialog dialog = new ProgressDialog(parent, parent.getProgressListener().getComponents(), ACT_NAME);
-				parent.actionUpload(file, dialog);
+				parent.actionUpload(file, dialog, existing, update);
 				dialog.setVisible(true);
 				if (dialog.isAborted()) {
 					parent.actionAbort();

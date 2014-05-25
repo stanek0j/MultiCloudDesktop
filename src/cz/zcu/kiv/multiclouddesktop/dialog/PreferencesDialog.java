@@ -48,6 +48,8 @@ public class PreferencesDialog extends JDialog {
 	private final JCheckBox chckShowErrorDialog;
 	/** Check box for showing shared files. */
 	private final JCheckBox chckShowShared;
+	/** Check box for uploading file without overwrite. */
+	private final JCheckBox chckUploadNoOverwrite;
 	/** Combo box for choosing list display type. */
 	private final JComboBox<String> cmbDisplayType;
 	/** Label with description for combo box. */
@@ -56,7 +58,7 @@ public class PreferencesDialog extends JDialog {
 	private final JLabel lblThreads;
 	/** Panel for holding buttons. */
 	private final JPanel buttonPanel;
-	/** Panel for choosing list diplay type. */
+	/** Panel for choosing list display type. */
 	private final JPanel displayTypePanel;
 	/** Panel for holding deleted check box. */
 	private final JPanel showDeletedPanel;
@@ -64,6 +66,8 @@ public class PreferencesDialog extends JDialog {
 	private final JPanel showErrorDialogPanel;
 	/** Panel for holding shared check box. */
 	private final JPanel showSharedPanel;
+	/** Panel for holding upload check box. */
+	private final JPanel uploadNoOverwritePanel;
 	/** Panel for choosing number of threads per account. */
 	private final JPanel threadsPanel;
 	/** Spinner for selecting number of threads per account. */
@@ -87,7 +91,7 @@ public class PreferencesDialog extends JDialog {
 		lblDisplayType = new JLabel("File display type:");
 		lblDisplayType.setBorder(new EmptyBorder(0, 0, 0, 8));
 		cmbDisplayType = new JComboBox<>();
-		cmbDisplayType.setPreferredSize(new Dimension(200, cmbDisplayType.getPreferredSize().height));
+		cmbDisplayType.setPreferredSize(new Dimension(400, cmbDisplayType.getPreferredSize().height));
 		for (ListDisplayType type: ListDisplayType.values()) {
 			cmbDisplayType.addItem(type.getText());
 		}
@@ -127,6 +131,13 @@ public class PreferencesDialog extends JDialog {
 		lblSpaceErrorDialog.setPreferredSize(new Dimension(labelWidth, lblSpaceErrorDialog.getPreferredSize().height));
 		showErrorDialogPanel.add(lblSpaceErrorDialog);
 		showErrorDialogPanel.add(chckShowErrorDialog);
+		chckUploadNoOverwrite = new JCheckBox("Upload file even if overwrite was not selected (only for single upload).");
+		uploadNoOverwritePanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
+		uploadNoOverwritePanel.setBorder(new EmptyBorder(2, 8, 2, 8));
+		JLabel lblSpaceUpload = new JLabel();
+		lblSpaceUpload.setPreferredSize(new Dimension(labelWidth, lblSpaceUpload.getPreferredSize().height));
+		uploadNoOverwritePanel.add(lblSpaceUpload);
+		uploadNoOverwritePanel.add(chckUploadNoOverwrite);
 		btnOk = new JButton("OK");
 		btnOk.setMargin(new Insets(4, 20, 4, 20));
 		btnOk.addActionListener(new ActionListener() {
@@ -176,6 +187,7 @@ public class PreferencesDialog extends JDialog {
 		add(showDeletedPanel);
 		add(showSharedPanel);
 		add(showErrorDialogPanel);
+		add(uploadNoOverwritePanel);
 		add(buttonPanel);
 
 		cmbDisplayType.setSelectedItem(prefs.getDisplayType().getText());
@@ -183,6 +195,7 @@ public class PreferencesDialog extends JDialog {
 		chckShowDeleted.setSelected(prefs.isShowDeleted());
 		chckShowShared.setSelected(prefs.isShowShared());
 		chckShowErrorDialog.setSelected(prefs.isShowErrorDialog());
+		chckUploadNoOverwrite.setSelected(prefs.isUploadNoOverwrite());
 
 		pack();
 		setLocationRelativeTo(parent);
@@ -207,6 +220,7 @@ public class PreferencesDialog extends JDialog {
 		prefs.setShowDeleted(chckShowDeleted.isSelected());
 		prefs.setShowShared(chckShowShared.isSelected());
 		prefs.setShowErrorDialog(chckShowErrorDialog.isSelected());
+		prefs.setUploadNoOverwrite(chckUploadNoOverwrite.isSelected());
 		return prefs;
 	}
 

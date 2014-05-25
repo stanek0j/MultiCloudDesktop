@@ -41,10 +41,14 @@ public class RefreshAction extends CloudAction {
 	@Override
 	public void actionPerformed(ActionEvent event) {
 		AccountData account = parent.getAccountList().getSelectedValue();
-		if (account == null) {
-			parent.getMessageCallback().displayError("No account selected.");
+		if (parent.getDataList().hasFocus()) {
+			parent.actionRefresh(parent.getCurrentAccount());
 		} else {
-			parent.actionRefresh(account.getName());
+			if (account == null) {
+				parent.getMessageCallback().displayError("No account selected.");
+			} else {
+				parent.actionRefresh(account.getName());
+			}
 		}
 	}
 

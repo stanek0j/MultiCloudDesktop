@@ -7,6 +7,7 @@ import javax.swing.ImageIcon;
 import javax.swing.JFileChooser;
 import javax.swing.JOptionPane;
 
+import cz.zcu.kiv.multicloud.filesystem.FileType;
 import cz.zcu.kiv.multicloud.json.FileInfo;
 import cz.zcu.kiv.multiclouddesktop.MultiCloudDesktop;
 import cz.zcu.kiv.multiclouddesktop.data.AccountData;
@@ -130,6 +131,28 @@ public class MultiUploadAction extends CloudAction {
 				return;
 			}
 		}
+		FileInfo[] existing = new FileInfo[output.length];
+		for (int i = 0; i < output.length; i++) {
+			existing[i] = null;
+			if (output[i] != null) {
+				for (FileInfo content: output[i].getContent()) {
+					if (content.getFileType() == FileType.FILE && content.getName().equals(file.getName())) {
+						String msg = "File '" + file.getName() + "' already exists at the specified location of " + accounts[i].getName() + ".\nDo you want to overwrite the remote file?";
+						option = JOptionPane.showConfirmDialog(parent, msg, ACT_NAME, JOptionPane.YES_NO_OPTION);
+						switch (option) {
+						case JOptionPane.YES_OPTION:
+							existing[i] = content;
+							break;
+						case JOptionPane.NO_OPTION:
+						case JOptionPane.CLOSED_OPTION:
+						default:
+							output[i] = null;
+							break;
+						}
+					}
+				}
+			}
+		}
 		DialogProgressListener listener = parent.getProgressListener();
 		listener.setDivisor(accounts.length);
 		ProgressDialog dialog = new ProgressDialog(parent, listener.getComponents(), ACT_NAME);
@@ -140,7 +163,7 @@ public class MultiUploadAction extends CloudAction {
 				output[i] = parent.getCurrentFolder();
 			}
 		}
-		parent.actionMultiUpload(accountNames, output, file, dialog);
+		parent.actionMultiUpload(accountNames, output, existing, file, dialog);
 		dialog.setVisible(true);
 		if (dialog.isAborted()) {
 			parent.actionAbort();

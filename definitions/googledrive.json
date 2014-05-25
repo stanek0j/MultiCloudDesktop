@@ -16,8 +16,6 @@
 	"client_secret":"ZLa85_y8DSnMoEJ1IsyW3fmm",
 	"redirect_uri":null,
 	"scope":"https://www.googleapis.com/auth/drive",
-	"chunked_upload":true,
-	"chunked_download":true,
 	"root_folder":
 	{
 		"id":"root"
@@ -92,6 +90,41 @@
 		},
 		"body":"<data>"
 	},
+	"update_file_begin_request":
+	{
+		"uri":"https://www.googleapis.com/upload/drive/v2/files/<file_id>",
+		"method":"PUT",
+		"params":
+		{
+			"uploadType":"resumable"
+		},
+		"mapping":
+		{
+			"session":"upload_id"
+		},
+		"headers":
+		{
+			"Content-Type":"application/json",
+			"X-Upload-Content-Type":"application/octet-stream",
+			"X-Upload-Content-Length":"<size>"
+		}
+	},
+	"update_file_request":
+	{
+		"uri":"https://www.googleapis.com/upload/drive/v2/files",
+		"method":"PUT",
+		"params":
+		{
+			"uploadType":"resumable",
+			"upload_id":"<session>"
+		},
+		"headers":
+		{
+			"Content-Type":"application/octet-stream",
+			"Content-Range":"bytes <offset>-<offsetbuffer>/<size>"
+		},
+		"body":"<data>"
+	},
 	"create_dir_request":
 	{
 		"uri":"https://www.googleapis.com/drive/v2/files",
@@ -105,7 +138,10 @@
 			"content":"items",
 			"deleted":"labels/trashed",
 			"size":"quotaBytesUsed",
-			"name":"title"
+			"name":"title",
+			"checksum":"md5Checksum",
+			"created":"createdDate",
+			"modified":"modifiedDate"
 		},
 		"json_body":
 		{
@@ -128,7 +164,10 @@
 			"content":"items",
 			"deleted":"labels/trashed",
 			"size":"quotaBytesUsed",
-			"name":"title"
+			"name":"title",
+			"checksum":"md5Checksum",
+			"created":"createdDate",
+			"modified":"modifiedDate"
 		}
 	},
 	"list_dir_request":
@@ -144,7 +183,10 @@
 			"content":"items",
 			"deleted":"labels/trashed",
 			"size":"quotaBytesUsed",
-			"name":"title"
+			"name":"title",
+			"checksum":"md5Checksum",
+			"created":"createdDate",
+			"modified":"modifiedDate"
 		}
 	},
 	"rename_request":
@@ -160,7 +202,10 @@
 			"content":"items",
 			"deleted":"labels/trashed",
 			"size":"quotaBytesUsed",
-			"name":"title"
+			"name":"title",
+			"checksum":"md5Checksum",
+			"created":"createdDate",
+			"modified":"modifiedDate"
 		},
 		"json_body":
 		{
@@ -180,7 +225,10 @@
 			"content":"items",
 			"deleted":"labels/trashed",
 			"size":"quotaBytesUsed",
-			"name":"title"
+			"name":"title",
+			"checksum":"md5Checksum",
+			"created":"createdDate",
+			"modified":"modifiedDate"
 		},
 		"json_body":
 		{
@@ -207,7 +255,10 @@
 			"content":"items",
 			"deleted":"labels/trashed",
 			"size":"quotaBytesUsed",
-			"name":"title"
+			"name":"title",
+			"checksum":"md5Checksum",
+			"created":"createdDate",
+			"modified":"modifiedDate"
 		},
 		"json_body":
 		{
@@ -238,7 +289,10 @@
 			"content":"items",
 			"deleted":"labels/trashed",
 			"size":"quotaBytesUsed",
-			"name":"title"
+			"name":"title",
+			"checksum":"md5Checksum",
+			"created":"createdDate",
+			"modified":"modifiedDate"
 		}
 	},
 	"metadata_request":
@@ -250,7 +304,10 @@
 			"content":"items",
 			"deleted":"labels/trashed",
 			"size":"quotaBytesUsed",
-			"name":"title"
+			"name":"title",
+			"checksum":"md5Checksum",
+			"created":"createdDate",
+			"modified":"modifiedDate"
 		}
 	}
 }

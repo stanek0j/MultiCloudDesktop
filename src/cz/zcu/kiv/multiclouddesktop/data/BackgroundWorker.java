@@ -388,20 +388,22 @@ public class BackgroundWorker extends Thread {
 	 * @param file File to be uploaded.
 	 * @param folder Original destination folder.
 	 * @param folders Destination folders.
+	 * @param remote Destination files to be updated.
 	 * @param progressDialog Progress dialog.
 	 * @return If the task was initialized.
 	 */
-	public boolean multiUpload(String accountName, String[] accountNames, File file, FileInfo folder, FileInfo[] folders, ProgressDialog progressDialog) {
+	public boolean multiUpload(String accountName, String[] accountNames, File file, FileInfo folder, FileInfo[] folders, FileInfo[] remote, ProgressDialog progressDialog) {
 		boolean ready = false;
 		synchronized (this) {
 			if (task == BackgroundTask.NONE) {
 				task = BackgroundTask.MULTI_UPLOAD;
 				dialog = progressDialog;
-				account= accountName;
+				account = accountName;
 				accounts = accountNames;
 				localFile = file;
-				dst = folder;
-				dsts = folders;
+				src = folder;
+				srcs = folders;
+				dsts = remote;
 				ready = true;
 				notifyAll();
 			}
@@ -561,7 +563,11 @@ public class BackgroundWorker extends Thread {
 			case UPLOAD:
 				try {
 					long start = System.currentTimeMillis();
-					cloud.uploadFile(account, dst, localFile.getName(), true, localFile);
+					if (dst != null) {
+						cloud.updateFile(account, src, dst, localFile.getName(), localFile);
+					} else {
+						cloud.uploadFile(account, src, localFile.getName(), overwrite, localFile);
+					}
 					double time = (System.currentTimeMillis() - start) / 1000.0;
 					if (dialog != null) {
 						synchronized (this) {
@@ -573,7 +579,8 @@ public class BackgroundWorker extends Thread {
 					}
 					beginOperation();
 					AccountQuota quota = cloud.accountQuota(account);
-					FileInfo list = cloud.listFolder(account, dst, showDeleted, showShared);
+					FileInfo list = cloud.listFolder(account, src, showDeleted, showShared);
+					parent.setCurrentFolder(task, list);
 					if (quotaCallback != null) {
 						quotaCallback.onFinish(task, account, quota);
 					}
@@ -584,17 +591,29 @@ public class BackgroundWorker extends Thread {
 					if (messageCallback != null) {
 						messageCallback.onFinish(task, e.getMessage(), true);
 					}
+					if (dialog != null) {
+						synchronized (this) {
+							dialog.closeDialog();
+							dialog = null;
+						}
+					}
 				}
 				break;
 			case MULTI_UPLOAD:
 				try {
 					for (int i = 0; i < accounts.length; i++) {
-						if (dsts[i] != null) {
-							cloud.addUploadDestination(accounts[i], dsts[i], localFile.getName());
+						if (srcs[i] != null) {
+							if (dsts[i] != null) {
+								System.out.println("adding for update: " + accounts[i]);
+								cloud.addUpdateDestination(accounts[i], srcs[i], dsts[i], localFile.getName());
+							} else {
+								System.out.println("adding for upload: " + accounts[i]);
+								cloud.addUploadDestination(accounts[i], srcs[i], localFile.getName());
+							}
 						}
 					}
 					long start = System.currentTimeMillis();
-					cloud.uploadMultiFile(true, localFile);
+					cloud.updateMultiFile(localFile);
 					double time = (System.currentTimeMillis() - start) / 1000.0;
 					if (dialog != null) {
 						synchronized (this) {
@@ -611,13 +630,20 @@ public class BackgroundWorker extends Thread {
 							quotaCallback.onFinish(task, accounts[i], quota);
 						}
 					}
-					FileInfo list = cloud.listFolder(account, dst, showDeleted, showShared);
+					FileInfo list = cloud.listFolder(account, src, showDeleted, showShared);
+					parent.setCurrentFolder(task, list);
 					if (listCallback != null) {
 						listCallback.onFinish(task, account, list);
 					}
 				} catch (MultiCloudException | OAuth2SettingsException | InterruptedException e) {
 					if (messageCallback != null) {
 						messageCallback.onFinish(task, e.getMessage(), true);
+					}
+					if (dialog != null) {
+						synchronized (this) {
+							dialog.closeDialog();
+							dialog = null;
+						}
 					}
 				}
 				break;
@@ -676,6 +702,7 @@ public class BackgroundWorker extends Thread {
 					cloud.createFolder(account, dstName, dst);
 					AccountQuota quota = cloud.accountQuota(account);
 					FileInfo list = cloud.listFolder(account, dst, showDeleted, showShared);
+					parent.setCurrentFolder(task, list);
 					if (messageCallback != null) {
 						messageCallback.onFinish(task, "Folder created.", false);
 					}
@@ -696,6 +723,7 @@ public class BackgroundWorker extends Thread {
 					cloud.rename(account, src, dstName);
 					AccountQuota quota = cloud.accountQuota(account);
 					FileInfo list = cloud.listFolder(account, dst, showDeleted, showShared);
+					parent.setCurrentFolder(task, list);
 					if (messageCallback != null) {
 						messageCallback.onFinish(task, "Folder created.", false);
 					}
@@ -716,6 +744,7 @@ public class BackgroundWorker extends Thread {
 					cloud.move(account, src, dst, dstName);
 					AccountQuota quota = cloud.accountQuota(account);
 					FileInfo list = cloud.listFolder(account, dst, showDeleted, showShared);
+					parent.setCurrentFolder(task, list);
 					if (messageCallback != null) {
 						messageCallback.onFinish(task, "File moved.", false);
 					}
@@ -736,6 +765,7 @@ public class BackgroundWorker extends Thread {
 					cloud.copy(account, src, dst, dstName);
 					AccountQuota quota = cloud.accountQuota(account);
 					FileInfo list = cloud.listFolder(account, dst, showDeleted, showShared);
+					parent.setCurrentFolder(task, list);
 					if (messageCallback != null) {
 						messageCallback.onFinish(task, "File copied.", false);
 					}
@@ -756,6 +786,7 @@ public class BackgroundWorker extends Thread {
 					cloud.delete(account, src);
 					AccountQuota quota = cloud.accountQuota(account);
 					FileInfo list = cloud.listFolder(account, dst, showDeleted, showShared);
+					parent.setCurrentFolder(task, list);
 					if (messageCallback != null) {
 						messageCallback.onFinish(task, "Deleted.", false);
 					}
@@ -893,10 +924,12 @@ public class BackgroundWorker extends Thread {
 	 * @param accountName Account name.
 	 * @param file Local file to be uploaded.
 	 * @param folder Destination folder to upload to.
+	 * @param remote Destination file to be updated.
+	 * @param update If the file contents should be updated.
 	 * @param progressDialog Progress dialog.
 	 * @return If the task was initialized.
 	 */
-	public boolean upload(String accountName, File file, FileInfo folder, ProgressDialog progressDialog) {
+	public boolean upload(String accountName, File file, FileInfo folder, FileInfo remote, boolean update, ProgressDialog progressDialog) {
 		boolean ready = false;
 		synchronized (this) {
 			if (task == BackgroundTask.NONE) {
@@ -904,7 +937,9 @@ public class BackgroundWorker extends Thread {
 				dialog = progressDialog;
 				account = accountName;
 				localFile = file;
-				dst = folder;
+				src = folder;
+				dst = remote;
+				overwrite = update;
 				ready = true;
 				notifyAll();
 			}

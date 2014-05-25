@@ -23,6 +23,8 @@ public class Preferences {
 	public static final boolean DEFAULT_SHOW_SHARED = false;
 	/** Default value for showing error dialogs. */
 	public static final boolean DEFAULT_SHOW_ERROR_DIALOG = true;
+	/** Default value for uploading file without overwrite. */
+	public static final boolean DEFAULT_UPLOAD_NO_OVERWRITE = false;
 	/** Default local folder for listing. */
 	public static final String DEFAULT_FOLDER = ".";
 
@@ -41,6 +43,9 @@ public class Preferences {
 	/** If the error dialogs should pop up. */
 	@JsonProperty("show_error_dialog")
 	private boolean showErrorDialog;
+	/** If file should be uploaded without overwrite. */
+	@JsonProperty("upload_no_overwrite")
+	private boolean uploadNoOverwrite;
 	/** Local folder for listing. */
 	private String folder;
 
@@ -53,6 +58,7 @@ public class Preferences {
 		showDeleted = DEFAULT_SHOW_DELETED;
 		showShared = DEFAULT_SHOW_SHARED;
 		showErrorDialog = DEFAULT_SHOW_ERROR_DIALOG;
+		uploadNoOverwrite = DEFAULT_UPLOAD_NO_OVERWRITE;
 		folder = DEFAULT_FOLDER;
 	}
 
@@ -105,6 +111,14 @@ public class Preferences {
 	}
 
 	/**
+	 * Returns if file should be uploaded without overwrite.
+	 * @return If file should be uploaded without overwrite.
+	 */
+	public boolean isUploadNoOverwrite() {
+		return uploadNoOverwrite;
+	}
+
+	/**
 	 * Sets the display type of the items.
 	 * @param displayType Display type of the items.
 	 */
@@ -150,6 +164,14 @@ public class Preferences {
 	 */
 	public void setThreadsPerAccount(int threadsPerAccount) {
 		this.threadsPerAccount = threadsPerAccount;
+	}
+
+	/**
+	 * Sets if file should be uploaded without overwrite.
+	 * @param uploadNoOverwrite If file should be uploaded without overwrite.
+	 */
+	public void setUploadNoOverwrite(boolean uploadNoOverwrite) {
+		this.uploadNoOverwrite = uploadNoOverwrite;
 	}
 
 }
