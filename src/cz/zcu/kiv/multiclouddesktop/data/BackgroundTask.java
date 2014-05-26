@@ -27,6 +27,7 @@ public enum BackgroundTask {
 	MOVE,
 	COPY,
 	DELETE,
-	SEARCH
+	SEARCH,
+	CHECKSUM
 
 }

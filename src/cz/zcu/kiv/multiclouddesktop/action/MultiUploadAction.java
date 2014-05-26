@@ -44,12 +44,14 @@ public class MultiUploadAction extends CloudAction {
 	/**
 	 * Ctor with necessary parameters.
 	 * @param parent Parent frame.
+	 * @param icnFolder Folder icon.
+	 * @param icnFile File icon.
 	 */
-	public MultiUploadAction(MultiCloudDesktop parent, File folder, ImageIcon icnFolder, ImageIcon icnFile) {
+	public MultiUploadAction(MultiCloudDesktop parent, ImageIcon icnFolder, ImageIcon icnFile) {
 		super(parent);
 		this.icnFolder = icnFolder;
 		this.icnFile = icnFile;
-		chooser = new OverwriteFileChooser(folder);
+		chooser = new OverwriteFileChooser();
 		chooser.setFileSelectionMode(JFileChooser.FILES_ONLY);
 		putValue(NAME, ACT_NAME);
 	}
@@ -65,6 +67,7 @@ public class MultiUploadAction extends CloudAction {
 		}
 		/* choose local file for upload */
 		File file = null;
+		chooser.setCurrentDirectory(new File(parent.getPreferences().getFolder()));
 		int option = chooser.showOpenDialog(parent);
 		switch (option) {
 		case JFileChooser.APPROVE_OPTION:

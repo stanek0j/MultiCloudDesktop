@@ -32,6 +32,8 @@ public class BackgroundWorker extends Thread {
 	private final MultiCloudDesktop parent;
 	/** Multicloud library. */
 	private final MultiCloud cloud;
+	/** Checksum cache. */
+	private final ChecksumProvider cache;
 	/** Abort button. */
 	private final JButton btnAbort;
 	/** Progress bar. */
@@ -85,6 +87,7 @@ public class BackgroundWorker extends Thread {
 	 * Ctor with necessary parameters.
 	 * @param parent Parent frame.
 	 * @param cloud Multicloud library.
+	 * @param cache Checksum cache.
 	 * @param abort Abort button.
 	 * @param progress Progress bar.
 	 * @param infoCallback Account Information callback.
@@ -95,6 +98,7 @@ public class BackgroundWorker extends Thread {
 	public BackgroundWorker(
 			MultiCloudDesktop parent,
 			MultiCloud cloud,
+			ChecksumProvider cache,
 			JButton abort,
 			JProgressBar progress,
 			BackgroundCallback<AccountInfo> infoCallback,
@@ -104,6 +108,7 @@ public class BackgroundWorker extends Thread {
 			) {
 		this.parent = parent;
 		this.cloud = cloud;
+		this.cache = cache;
 		this.btnAbort = abort;
 		this.progressBar = progress;
 		this.infoCallback = infoCallback;
@@ -291,6 +296,37 @@ public class BackgroundWorker extends Thread {
 	private synchronized void finishOperation() {
 		progressBar.setIndeterminate(false);
 		btnAbort.setEnabled(false);
+	}
+
+	/**
+	 * Preparing task for computing checksum of a file.
+	 * @param accountName Account name.
+	 * @param file File to compute checksum of.
+	 * @param target Local temporary file.
+	 * @param progressDialog Progress dialog.
+	 * @return If the task was initialized.
+	 */
+	public boolean checksum(String accountName, FileInfo file, File target, int threads, ProgressDialog progressDialog) {
+		boolean ready = false;
+		synchronized (this) {
+			if (task == BackgroundTask.NONE) {
+				task = BackgroundTask.CHECKSUM;
+				dialog = progressDialog;
+				account = accountName;
+				accounts = new String[threads];
+				src = file;
+				srcs = new FileInfo[threads];
+				localFile = target;
+				overwrite = true;
+				for (int i = 0; i < threads; i++) {
+					accounts[i] = accountName;
+					srcs[i] = file;
+				}
+				ready = true;
+				notifyAll();
+			}
+		}
+		return ready;
 	}
 
 	/**
@@ -500,6 +536,10 @@ public class BackgroundWorker extends Thread {
 						quotaCallback.onFinish(task, account, quota);
 					}
 					FileInfo list = cloud.listFolder(account, src, showDeleted, showShared);
+					if (list != null) {
+						cache.provideChecksum(account, list);
+						cache.provideChecksum(account, list.getContent());
+					}
 					parent.setCurrentAccount(account);
 					parent.setCurrentFolder(task, list);
 					if (messageCallback != null) {
@@ -518,6 +558,10 @@ public class BackgroundWorker extends Thread {
 				FileInfo browse = null;
 				try {
 					browse = cloud.listFolder(account, src, showDeleted, showShared);
+					if (browse != null) {
+						cache.provideChecksum(account, browse);
+						cache.provideChecksum(account, browse.getContent());
+					}
 					if (messageCallback != null) {
 						messageCallback.onFinish(task, "Folder listed.", false);
 					}
@@ -562,6 +606,7 @@ public class BackgroundWorker extends Thread {
 				break;
 			case UPLOAD:
 				try {
+					String checksum = cache.computeChecksum(localFile);
 					long start = System.currentTimeMillis();
 					if (dst != null) {
 						cloud.updateFile(account, src, dst, localFile.getName(), localFile);
@@ -569,17 +614,60 @@ public class BackgroundWorker extends Thread {
 						cloud.uploadFile(account, src, localFile.getName(), overwrite, localFile);
 					}
 					double time = (System.currentTimeMillis() - start) / 1000.0;
+					if (messageCallback != null) {
+						messageCallback.onFinish(task, "Upload finished in " + String.format("%.2f", time) + " seconds.", false);
+					}
+					beginOperation();
 					if (dialog != null) {
 						synchronized (this) {
 							dialog = null;
 						}
 					}
-					if (messageCallback != null) {
-						messageCallback.onFinish(task, "Upload finished in " + String.format("%.2f", time) + " seconds.", false);
-					}
-					beginOperation();
 					AccountQuota quota = cloud.accountQuota(account);
 					FileInfo list = cloud.listFolder(account, src, showDeleted, showShared);
+					if (list != null) {
+						for (FileInfo content: list.getContent()) {
+							if (!src.getContent().contains(content)) {
+								/* new file uploaded */
+								if (content.getName().equals(localFile.getName()) && content.getSize() == localFile.length()) {
+									content.setChecksum(checksum);
+									cache.add(account, content);
+									break;
+								}
+							} else {
+								if (dst == null) {
+									continue;
+								}
+								/* match ID if present */
+								boolean condId = false;
+								if ((content.getId() == null) && (dst.getId() == null)) {
+									condId = true;
+								} else if ((content.getId() != null) && (dst.getId() != null)) {
+									condId = content.getId().equals(dst.getId());
+								} else {
+									continue;
+								}
+								/* match PATH if present */
+								boolean condPath = false;
+								if ((content.getPath() == null) && (dst.getPath() == null)) {
+									condPath = true;
+								} else if ((content.getPath() != null) && (dst.getPath() != null)) {
+									condPath = content.getPath().equals(dst.getPath());
+								} else {
+									continue;
+								}
+								/* match NAME */
+								boolean condName = (dst != null && content.getName().equals(dst.getName()));
+								if (condId && condPath && condName) {
+									content.setChecksum(checksum);
+									cache.add(account, content);
+									break;
+								}
+							}
+						}
+						cache.provideChecksum(account, list);
+						cache.provideChecksum(account, list.getContent());
+					}
 					parent.setCurrentFolder(task, list);
 					if (quotaCallback != null) {
 						quotaCallback.onFinish(task, account, quota);
@@ -601,13 +689,12 @@ public class BackgroundWorker extends Thread {
 				break;
 			case MULTI_UPLOAD:
 				try {
+					String checksum = cache.computeChecksum(localFile);
 					for (int i = 0; i < accounts.length; i++) {
 						if (srcs[i] != null) {
 							if (dsts[i] != null) {
-								System.out.println("adding for update: " + accounts[i]);
 								cloud.addUpdateDestination(accounts[i], srcs[i], dsts[i], localFile.getName());
 							} else {
-								System.out.println("adding for upload: " + accounts[i]);
 								cloud.addUploadDestination(accounts[i], srcs[i], localFile.getName());
 							}
 						}
@@ -615,22 +702,69 @@ public class BackgroundWorker extends Thread {
 					long start = System.currentTimeMillis();
 					cloud.updateMultiFile(localFile);
 					double time = (System.currentTimeMillis() - start) / 1000.0;
+					if (messageCallback != null) {
+						messageCallback.onFinish(task, "Upload finished in " + String.format("%.2f", time) + " seconds.", false);
+					}
+					beginOperation();
 					if (dialog != null) {
 						synchronized (this) {
 							dialog = null;
 						}
 					}
-					if (messageCallback != null) {
-						messageCallback.onFinish(task, "Upload finished in " + String.format("%.2f", time) + " seconds.", false);
-					}
-					beginOperation();
 					for (int i = 0; i < accounts.length; i++) {
 						AccountQuota quota = cloud.accountQuota(accounts[i]);
 						if (quotaCallback != null) {
 							quotaCallback.onFinish(task, accounts[i], quota);
 						}
 					}
-					FileInfo list = cloud.listFolder(account, src, showDeleted, showShared);
+					FileInfo list = null;
+					for (int i = 0; i < accounts.length; i++) {
+						list = cloud.listFolder(accounts[i], srcs[i], showDeleted, showShared);
+						for (FileInfo content: list.getContent()) {
+							if (!srcs[i].getContent().contains(content)) {
+								/* new file uploaded */
+								if (content.getName().equals(localFile.getName()) && content.getSize() == localFile.length()) {
+									content.setChecksum(checksum);
+									cache.add(accounts[i], content);
+									break;
+								}
+							} else {
+								if (dsts == null) {
+									continue;
+								}
+								/* match ID if present */
+								boolean condId = false;
+								if ((content.getId() == null) && (dsts[i].getId() == null)) {
+									condId = true;
+								} else if ((content.getId() != null) && (dsts[i].getId() != null)) {
+									condId = content.getId().equals(dsts[i].getId());
+								} else {
+									continue;
+								}
+								/* match PATH if present */
+								boolean condPath = false;
+								if ((content.getPath() == null) && (dsts[i].getPath() == null)) {
+									condPath = true;
+								} else if ((content.getPath() != null) && (dsts[i].getPath() != null)) {
+									condPath = content.getPath().equals(dsts[i].getPath());
+								} else {
+									continue;
+								}
+								/* match NAME */
+								boolean condName = (dsts[i] != null && content.getName().equals(dsts[i].getName()));
+								if (condId && condPath && condName) {
+									content.setChecksum(checksum);
+									cache.add(accounts[i], content);
+									break;
+								}
+							}
+						}
+					}
+					list = cloud.listFolder(account, src, showDeleted, showShared);
+					if (list != null) {
+						cache.provideChecksum(account, list);
+						cache.provideChecksum(account, list.getContent());
+					}
 					parent.setCurrentFolder(task, list);
 					if (listCallback != null) {
 						listCallback.onFinish(task, account, list);
@@ -683,6 +817,10 @@ public class BackgroundWorker extends Thread {
 			case LIST_FOLDER:
 				try {
 					FileInfo list = cloud.listFolder(account, src, showDeleted, showShared);
+					if (list != null) {
+						cache.provideChecksum(account, list);
+						cache.provideChecksum(account, list.getContent());
+					}
 					parent.setCurrentAccount(account);
 					parent.setCurrentFolder(task, list);
 					if (messageCallback != null) {
@@ -702,6 +840,10 @@ public class BackgroundWorker extends Thread {
 					cloud.createFolder(account, dstName, dst);
 					AccountQuota quota = cloud.accountQuota(account);
 					FileInfo list = cloud.listFolder(account, dst, showDeleted, showShared);
+					if (list != null) {
+						cache.provideChecksum(account, list);
+						cache.provideChecksum(account, list.getContent());
+					}
 					parent.setCurrentFolder(task, list);
 					if (messageCallback != null) {
 						messageCallback.onFinish(task, "Folder created.", false);
@@ -720,9 +862,15 @@ public class BackgroundWorker extends Thread {
 				break;
 			case RENAME:
 				try {
-					cloud.rename(account, src, dstName);
+					FileInfo renamed = cloud.rename(account, src, dstName);
+					renamed.setChecksum(src.getChecksum());
+					cache.update(account, src, renamed);
 					AccountQuota quota = cloud.accountQuota(account);
 					FileInfo list = cloud.listFolder(account, dst, showDeleted, showShared);
+					if (list != null) {
+						cache.provideChecksum(account, list);
+						cache.provideChecksum(account, list.getContent());
+					}
 					parent.setCurrentFolder(task, list);
 					if (messageCallback != null) {
 						messageCallback.onFinish(task, "Folder created.", false);
@@ -741,9 +889,15 @@ public class BackgroundWorker extends Thread {
 				break;
 			case MOVE:
 				try {
-					cloud.move(account, src, dst, dstName);
+					FileInfo moved = cloud.move(account, src, dst, dstName);
+					moved.setChecksum(src.getChecksum());
+					cache.update(account, src, moved);
 					AccountQuota quota = cloud.accountQuota(account);
 					FileInfo list = cloud.listFolder(account, dst, showDeleted, showShared);
+					if (list != null) {
+						cache.provideChecksum(account, list);
+						cache.provideChecksum(account, list.getContent());
+					}
 					parent.setCurrentFolder(task, list);
 					if (messageCallback != null) {
 						messageCallback.onFinish(task, "File moved.", false);
@@ -762,9 +916,15 @@ public class BackgroundWorker extends Thread {
 				break;
 			case COPY:
 				try {
-					cloud.copy(account, src, dst, dstName);
+					FileInfo copied = cloud.copy(account, src, dst, dstName);
+					copied.setChecksum(src.getChecksum());
+					cache.add(account, copied);
 					AccountQuota quota = cloud.accountQuota(account);
 					FileInfo list = cloud.listFolder(account, dst, showDeleted, showShared);
+					if (list != null) {
+						cache.provideChecksum(account, list);
+						cache.provideChecksum(account, list.getContent());
+					}
 					parent.setCurrentFolder(task, list);
 					if (messageCallback != null) {
 						messageCallback.onFinish(task, "File copied.", false);
@@ -784,8 +944,13 @@ public class BackgroundWorker extends Thread {
 			case DELETE:
 				try {
 					cloud.delete(account, src);
+					cache.remove(account, src);
 					AccountQuota quota = cloud.accountQuota(account);
 					FileInfo list = cloud.listFolder(account, dst, showDeleted, showShared);
+					if (list != null) {
+						cache.provideChecksum(account, list);
+						cache.provideChecksum(account, list.getContent());
+					}
 					parent.setCurrentFolder(task, list);
 					if (messageCallback != null) {
 						messageCallback.onFinish(task, "Deleted.", false);
@@ -807,6 +972,7 @@ public class BackgroundWorker extends Thread {
 				try {
 					result = cloud.search(account, dstName, showDeleted);
 					if (result != null) {
+						cache.provideChecksum(account, result);
 						for (FileInfo f: result) {
 							/* find the path of the file */
 							if (f.getPath() == null) {
@@ -845,6 +1011,36 @@ public class BackgroundWorker extends Thread {
 				if (searchCallback != null) {
 					searchCallback.onFinish(task, account, result);
 				}
+				break;
+			case CHECKSUM:
+				try {
+					for (int i = 0; i < accounts.length; i++) {
+						if (srcs[i] != null) {
+							cloud.addDownloadSource(accounts[i], srcs[i]);
+						}
+					}
+					cloud.downloadMultiFile(localFile, overwrite);
+					if (dialog != null) {
+						synchronized (this) {
+							dialog = null;
+						}
+					}
+					if (messageCallback != null) {
+						messageCallback.onFinish(task, "File downloaded, computing checksum.", false);
+					}
+					beginOperation();
+					String checksum = cache.computeChecksum(localFile);
+					src.setChecksum(checksum);
+					cache.add(account, src);
+					if (messageCallback != null) {
+						messageCallback.onFinish(task, "Checksum computed.", false);
+					}
+				} catch (MultiCloudException | OAuth2SettingsException | InterruptedException e) {
+					if (messageCallback != null) {
+						messageCallback.onFinish(task, e.getMessage(), true);
+					}
+				}
+				localFile.delete();
 				break;
 			case NONE:
 			default:

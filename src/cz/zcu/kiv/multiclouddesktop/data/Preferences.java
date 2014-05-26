@@ -23,6 +23,8 @@ public class Preferences {
 	public static final boolean DEFAULT_SHOW_SHARED = false;
 	/** Default value for showing error dialogs. */
 	public static final boolean DEFAULT_SHOW_ERROR_DIALOG = true;
+	/** Default value for showing checksum dialog. */
+	public static final boolean DEFAULT_SHOW_CHECKSUM_DIALOG = true;
 	/** Default value for uploading file without overwrite. */
 	public static final boolean DEFAULT_UPLOAD_NO_OVERWRITE = false;
 	/** Default local folder for listing. */
@@ -43,6 +45,9 @@ public class Preferences {
 	/** If the error dialogs should pop up. */
 	@JsonProperty("show_error_dialog")
 	private boolean showErrorDialog;
+	/** If the checksum dialog should be displayed. */
+	@JsonProperty("show_checksum_dialog")
+	private boolean showChecksumDialog;
 	/** If file should be uploaded without overwrite. */
 	@JsonProperty("upload_no_overwrite")
 	private boolean uploadNoOverwrite;
@@ -58,6 +63,7 @@ public class Preferences {
 		showDeleted = DEFAULT_SHOW_DELETED;
 		showShared = DEFAULT_SHOW_SHARED;
 		showErrorDialog = DEFAULT_SHOW_ERROR_DIALOG;
+		showChecksumDialog = DEFAULT_SHOW_CHECKSUM_DIALOG;
 		uploadNoOverwrite = DEFAULT_UPLOAD_NO_OVERWRITE;
 		folder = DEFAULT_FOLDER;
 	}
@@ -100,6 +106,14 @@ public class Preferences {
 	 */
 	public boolean isShowErrorDialog() {
 		return showErrorDialog;
+	}
+
+	/**
+	 * Returns if the checksum dialog should be displayed.
+	 * @return If the checksum dialog should be displayed.
+	 */
+	public boolean isShowChecksumDialog() {
+		return showChecksumDialog;
 	}
 
 	/**
@@ -148,6 +162,14 @@ public class Preferences {
 	 */
 	public void setShowErrorDialog(boolean showErrorDialog) {
 		this.showErrorDialog = showErrorDialog;
+	}
+
+	/**
+	 * Sets if the checksum dialog should be displayed.
+	 * @param showChecksumDialog If the checksum dialog should be displayed.
+	 */
+	public void setShowChecksumDialog(boolean showChecksumDialog) {
+		this.showChecksumDialog = showChecksumDialog;
 	}
 
 	/**

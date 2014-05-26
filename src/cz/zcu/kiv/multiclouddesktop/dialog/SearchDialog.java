@@ -108,10 +108,11 @@ public class SearchDialog extends JDialog {
 	 * @param matchFile File to search for.
 	 * @param matchString String to search for.
 	 * @param selectedAccounts Accounts to be searched.
-	 * @param icnFolder Folder icon.
-	 * @param icnFile File icon.
+	 * @param folder Folder icon.
+	 * @param file File icon.
+	 * @param badFile Bad file icon.
 	 */
-	public SearchDialog(MultiCloudDesktop parentFrame, String title, FileInfo matchFile, String matchString, AccountData[] selectedAccounts, ImageIcon folder, ImageIcon file) {
+	public SearchDialog(MultiCloudDesktop parentFrame, String title, FileInfo matchFile, String matchString, AccountData[] selectedAccounts, ImageIcon folder, ImageIcon file, ImageIcon badFile) {
 		parent = parentFrame;
 		this.match = matchFile;
 		this.accounts = selectedAccounts;
@@ -176,7 +177,7 @@ public class SearchDialog extends JDialog {
 		lblResults.setVerticalAlignment(JLabel.TOP);
 		resultsList = new JList<FileInfo>();
 		resultsList.setVisibleRowCount(-1);
-		resultsList.setCellRenderer(new SearchDialogListCellRenderer(true, folder, file));
+		resultsList.setCellRenderer(new SearchDialogListCellRenderer(matchFile, true, folder, file, badFile));
 		resultsList.setModel(new DefaultListModel<FileInfo>());
 		resultsList.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
 		resultsList.addListSelectionListener(new ListSelectionListener() {
@@ -187,7 +188,7 @@ public class SearchDialog extends JDialog {
 			public void valueChanged(ListSelectionEvent event) {
 				int index = cmbAccount.getSelectedIndex();
 				if (index > -1 && event.getValueIsAdjusting()) {
-					if (index >= skipIndex) {
+					if (index >= skipIndex && skipIndex > -1) {
 						index++;
 					}
 					output[index] = resultsList.getSelectedValue();

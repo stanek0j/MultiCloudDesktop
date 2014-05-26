@@ -34,11 +34,10 @@ public class UploadAction extends CloudAction {
 	/**
 	 * Ctor with necessary parameters.
 	 * @param parent Parent frame.
-	 * @param folder Default folder.
 	 */
-	public UploadAction(MultiCloudDesktop parent, File folder) {
+	public UploadAction(MultiCloudDesktop parent) {
 		super(parent);
-		chooser = new JFileChooser(folder);
+		chooser = new JFileChooser();
 		chooser.setFileSelectionMode(JFileChooser.FILES_ONLY);
 		putValue(NAME, ACT_NAME);
 	}
@@ -51,6 +50,7 @@ public class UploadAction extends CloudAction {
 		if (parent.getCurrentAccount() == null) {
 			parent.getMessageCallback().displayError("No account selected.");
 		} else {
+			chooser.setCurrentDirectory(new File(parent.getPreferences().getFolder()));
 			int option = chooser.showOpenDialog(parent);
 			switch (option) {
 			case JFileChooser.APPROVE_OPTION:

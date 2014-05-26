@@ -62,7 +62,10 @@ public class PropertiesAction extends CloudAction {
 			JPanel idPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
 			JLabel lblId = new JLabel("ID:");
 			lblId.setPreferredSize(new Dimension(60, lblId.getPreferredSize().height));
-			JLabel lblIdTxt = new JLabel(f.getId());
+			JLabel lblIdTxt = new JLabel("-");
+			if (f.getId() != null) {
+				lblIdTxt.setText(f.getId());
+			}
 			lblIdTxt.setFont(boldFont);
 			idPanel.add(lblId);
 			idPanel.add(lblIdTxt);
@@ -90,11 +93,22 @@ public class PropertiesAction extends CloudAction {
 			lblSizeTxt.setFont(boldFont);
 			sizePanel.add(lblSize);
 			sizePanel.add(lblSizeTxt);
+			JPanel checksumPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
+			JLabel lblChecksum = new JLabel("Checksum:");
+			lblChecksum.setPreferredSize(new Dimension(60, lblChecksum.getPreferredSize().height));
+			JLabel lblChecksumTxt = new JLabel("-");
+			if (f.getChecksum() != null) {
+				lblChecksumTxt.setText(f.getChecksum());
+			}
+			lblChecksumTxt.setFont(boldFont);
+			checksumPanel.add(lblChecksum);
+			checksumPanel.add(lblChecksumTxt);
 			JComponent[] content = new JComponent[] {
 					namePanel,
 					idPanel,
 					typePanel,
-					sizePanel
+					sizePanel,
+					checksumPanel
 			};
 			JOptionPane.showMessageDialog(parent, content, ACT_NAME, JOptionPane.PLAIN_MESSAGE);
 		}

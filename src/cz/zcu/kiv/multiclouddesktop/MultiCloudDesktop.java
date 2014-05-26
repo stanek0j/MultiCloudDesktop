@@ -62,6 +62,7 @@ import cz.zcu.kiv.multicloud.utils.Utils;
 import cz.zcu.kiv.multiclouddesktop.action.AboutAction;
 import cz.zcu.kiv.multiclouddesktop.action.AddAccountAction;
 import cz.zcu.kiv.multiclouddesktop.action.AuthorizeAction;
+import cz.zcu.kiv.multiclouddesktop.action.ChecksumAction;
 import cz.zcu.kiv.multiclouddesktop.action.CopyAction;
 import cz.zcu.kiv.multiclouddesktop.action.CreateFolderAction;
 import cz.zcu.kiv.multiclouddesktop.action.CutAction;
@@ -89,6 +90,7 @@ import cz.zcu.kiv.multiclouddesktop.data.AccountQuotaCallback;
 import cz.zcu.kiv.multiclouddesktop.data.BackgroundTask;
 import cz.zcu.kiv.multiclouddesktop.data.BackgroundWorker;
 import cz.zcu.kiv.multiclouddesktop.data.BrowseCallback;
+import cz.zcu.kiv.multiclouddesktop.data.ChecksumProvider;
 import cz.zcu.kiv.multiclouddesktop.data.FileInfoCallback;
 import cz.zcu.kiv.multiclouddesktop.data.FileInfoListCellRenderer;
 import cz.zcu.kiv.multiclouddesktop.data.MessageCallback;
@@ -224,6 +226,8 @@ public class MultiCloudDesktop extends JFrame {
 	private final JMenuItem mntmCopy;
 	/** Paste menu item. */
 	private final JMenuItem mntmPaste;
+	/** Checksum menu item. */
+	private final JMenuItem mntmChecksum;
 	/** Properties menu item. */
 	private final JMenuItem mntmProperties;
 
@@ -276,6 +280,8 @@ public class MultiCloudDesktop extends JFrame {
 	private final JMenuItem mntmCopyPop;
 	/** Paste menu item. */
 	private final JMenuItem mntmPastePop;
+	/** Checksum menu item. */
+	private final JMenuItem mntmChecksumPop;
 	/** Properties menu item. */
 	private final JMenuItem mntmPropertiesPop;
 
@@ -321,6 +327,8 @@ public class MultiCloudDesktop extends JFrame {
 	private final Action actCopy;
 	/** Action for pasting files. */
 	private final Action actPaste;
+	/** Action for computing checksums. */
+	private final Action actChecksum;
 	/** Action for displaying file or folder properties. */
 	private final Action actProperties;
 
@@ -364,6 +372,8 @@ public class MultiCloudDesktop extends JFrame {
 	private final Object lock;
 	/** JSON parser instance. */
 	private final Json json;
+	/** Checksum cache for remote files. */
+	private final ChecksumProvider cache;
 
 	/**
 	 * Empty ctor.
@@ -374,6 +384,7 @@ public class MultiCloudDesktop extends JFrame {
 		transferType = TransferType.NONE;
 		lock = new Object();
 		json = Json.getInstance();
+		cache = new ChecksumProvider();
 
 		setMinimumSize(new Dimension(720, 480));
 		setPreferredSize(new Dimension(720, 480));
@@ -409,8 +420,8 @@ public class MultiCloudDesktop extends JFrame {
 			icnFolderSmall = new ImageIcon(ImageIO.read(loader.getResourceAsStream("folder_small.png")));
 			icnFile = new ImageIcon(ImageIO.read(loader.getResourceAsStream("file.png")));
 			icnFileSmall = new ImageIcon(ImageIO.read(loader.getResourceAsStream("file_small.png")));
-			icnBadFile = new ImageIcon(ImageIO.read(loader.getResourceAsStream("file.png")));
-			icnBadFileSmall = new ImageIcon(ImageIO.read(loader.getResourceAsStream("file_small.png")));
+			icnBadFile = new ImageIcon(ImageIO.read(loader.getResourceAsStream("bad_file.png")));
+			icnBadFileSmall = new ImageIcon(ImageIO.read(loader.getResourceAsStream("bad_file_small.png")));
 			icnCloud = new ImageIcon(ImageIO.read(loader.getResourceAsStream("cloud_96.png")));
 		} catch (IOException e) {
 			e.printStackTrace();
@@ -612,7 +623,7 @@ public class MultiCloudDesktop extends JFrame {
 		quotaCallback = new AccountQuotaCallback(this, accountList);
 		listCallback = new FileInfoCallback(this, accountList, dataList);
 		messageCallback = new MessageCallback(this, lblStatus, prefs.isShowErrorDialog());
-		worker = new BackgroundWorker(this, cloud, btnAbort, progressBar, infoCallback, quotaCallback, listCallback, messageCallback);
+		worker = new BackgroundWorker(this, cloud, cache, btnAbort, progressBar, infoCallback, quotaCallback, listCallback, messageCallback);
 		worker.start();
 		String[] accounts = new String[accountModel.getSize()];
 		for (int i = 0; i < accountModel.getSize(); i++) {
@@ -644,16 +655,17 @@ public class MultiCloudDesktop extends JFrame {
 
 		actRefresh = new RefreshAction(this);
 		actFind = new FindAction(this, icnFolderSmall, icnFileSmall);
-		actUpload = new UploadAction(this, new File(prefs.getFolder()));
-		actMultiUpload = new MultiUploadAction(this, new File(prefs.getFolder()), icnFolderSmall, icnFileSmall);
-		actDownload = new DownloadAction(this, new File(prefs.getFolder()));
-		actMultiDownload = new MultiDownloadAction(this, new File(prefs.getFolder()), icnFolderSmall, icnFileSmall);
+		actUpload = new UploadAction(this);
+		actMultiUpload = new MultiUploadAction(this, icnFolderSmall, icnFileSmall);
+		actDownload = new DownloadAction(this);
+		actMultiDownload = new MultiDownloadAction(this, icnFolderSmall, icnFileSmall, icnBadFileSmall);
 		actCreateFolder = new CreateFolderAction(this);
 		actRename = new RenameAction(this);
 		actDelete = new DeleteAction(this);
 		actCut = new CutAction(this);
 		actCopy = new CopyAction(this);
 		actPaste = new PasteAction(this);
+		actChecksum = new ChecksumAction(this);
 		actProperties = new PropertiesAction(this);
 
 		actAbout = new AboutAction(this, icnCloud);
@@ -796,6 +808,10 @@ public class MultiCloudDesktop extends JFrame {
 
 		mnOperation.addSeparator();
 
+		mntmChecksum = new JMenuItem();
+		mntmChecksum.setAction(actChecksum);
+		mnOperation.add(mntmChecksum);
+
 		mntmProperties = new JMenuItem();
 		mntmProperties.setAction(actProperties);
 		mnOperation.add(mntmProperties);
@@ -868,6 +884,10 @@ public class MultiCloudDesktop extends JFrame {
 		popupMenu.add(mntmPastePop);
 
 		popupMenu.addSeparator();
+
+		mntmChecksumPop = new JMenuItem();
+		mntmChecksumPop.setAction(actChecksum);
+		popupMenu.add(mntmChecksumPop);
 
 		mntmPropertiesPop = new JMenuItem();
 		mntmPropertiesPop.setAction(actProperties);
@@ -1022,6 +1042,17 @@ public class MultiCloudDesktop extends JFrame {
 	}
 
 	/**
+	 * Action callback for computing remote file checksum.
+	 * @param file File for computing checksum.
+	 * @param tmp Local temporary file.
+	 * @param dialog Progress dialog.
+	 */
+	public synchronized void actionChecksum(FileInfo file, File tmp, ProgressDialog dialog) {
+		progressListener.setDialog(dialog);
+		worker.checksum(currentAccount, file, tmp, prefs.getThreadsPerAccount(), dialog);
+	}
+
+	/**
 	 * Action callback for getting account information.
 	 * @param account Account name.
 	 */
@@ -1157,6 +1188,7 @@ public class MultiCloudDesktop extends JFrame {
 		try {
 			cloud.deleteAccount(account.getName());
 			accountModel.removeElement(account);
+			cache.removeAccount(account.getName());
 			messageCallback.displayMessage("Account removed.");
 		} catch (MultiCloudException e) {
 			messageCallback.displayError(e.getMessage());
@@ -1182,6 +1214,7 @@ public class MultiCloudDesktop extends JFrame {
 			cloud.renameAccount(original.getName(), renamed.getName());
 			accountModel.removeElement(original);
 			accountModel.addElement(renamed);
+			cache.renameAccount(original.getName(), renamed.getName());
 			messageCallback.displayMessage("Account renamed.");
 		} catch (MultiCloudException e) {
 			messageCallback.displayError(e.getMessage());

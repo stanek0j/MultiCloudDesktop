@@ -48,8 +48,14 @@ public class SearchCallback implements BackgroundCallback<List<FileInfo>> {
 			} else {
 				for (FileInfo f: result) {
 					if (match != null) {
-						if (match.equals(f)) {
-							model.addElement(f);
+						if (match.getChecksum() != null) {
+							if (match.getChecksum().equals(f.getChecksum())) {
+								model.addElement(f);
+							}
+						} else {
+							if (match.getSize() == f.getSize() && match.getFileType() == f.getFileType()) {
+								model.addElement(f);
+							}
 						}
 					} else {
 						model.addElement(f);

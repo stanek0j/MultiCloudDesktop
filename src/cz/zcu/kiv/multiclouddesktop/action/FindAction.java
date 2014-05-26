@@ -56,7 +56,7 @@ public class FindAction extends CloudAction {
 		if (file != null) {
 			match = file.getName();
 		}
-		SearchDialog dialog = new SearchDialog(parent, ACT_NAME, null, match, null, icnFolder, icnFile);
+		SearchDialog dialog = new SearchDialog(parent, ACT_NAME, null, match, null, icnFolder, icnFile, null);
 		dialog.setVisible(true);
 		parent.getMessageCallback().displayMessage("Search finished.");
 	}

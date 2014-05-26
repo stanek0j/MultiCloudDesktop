@@ -168,7 +168,7 @@ public class BrowseDialog extends JDialog {
 		lblResults.setVerticalAlignment(JLabel.TOP);
 		resultsList = new JList<FileInfo>();
 		resultsList.setVisibleRowCount(-1);
-		resultsList.setCellRenderer(new SearchDialogListCellRenderer(false, folder, file));
+		resultsList.setCellRenderer(new SearchDialogListCellRenderer(null, false, folder, file, null));
 		resultsList.setModel(new DefaultListModel<FileInfo>());
 		resultsList.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
 		resultsList.addKeyListener(new KeyAdapter() {

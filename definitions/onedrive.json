@@ -49,6 +49,14 @@
 		{
 			"overwrite":"<overwrite>"
 		},
+		"mapping":
+		{
+			"content":"data",
+			"parent":"parent_id",
+			"stringFileType":"type",
+			"created":"created_time",
+			"modified":"updated_time"
+		},
 		"body":"<data>"
 	},
 	"update_file_finish_request":
@@ -59,6 +67,14 @@
 		"params":
 		{
 			"overwrite":"<overwrite>"
+		},
+		"mapping":
+		{
+			"content":"data",
+			"parent":"parent_id",
+			"stringFileType":"type",
+			"created":"created_time",
+			"modified":"updated_time"
 		},
 		"body":"<data>"
 	},
@@ -99,6 +115,14 @@
 		"json_body":
 		{
 			"name":"<name>"
+		},
+		"mapping":
+		{
+			"content":"data",
+			"parent":"parent_id",
+			"stringFileType":"type",
+			"created":"created_time",
+			"modified":"updated_time"
 		}
 	},
 	"copy_request":
@@ -112,6 +136,14 @@
 		"json_body":
 		{
 			"destination":"<destination_id>"
+		},
+		"mapping":
+		{
+			"content":"data",
+			"parent":"parent_id",
+			"stringFileType":"type",
+			"created":"created_time",
+			"modified":"updated_time"
 		}
 	},
 	"move_request":
@@ -125,6 +157,14 @@
 		"json_body":
 		{
 			"destination":"<destination_id>"
+		},
+		"mapping":
+		{
+			"content":"data",
+			"parent":"parent_id",
+			"stringFileType":"type",
+			"created":"created_time",
+			"modified":"updated_time"
 		}
 	},
 	"delete_request":

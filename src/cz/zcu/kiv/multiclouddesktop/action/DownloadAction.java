@@ -34,11 +34,10 @@ public class DownloadAction extends CloudAction {
 	/**
 	 * Ctor with necessary parameters.
 	 * @param parent Parent frame.
-	 * @param folder Default folder.
 	 */
-	public DownloadAction(MultiCloudDesktop parent, File folder) {
+	public DownloadAction(MultiCloudDesktop parent) {
 		super(parent);
-		chooser = new OverwriteFileChooser(folder);
+		chooser = new OverwriteFileChooser();
 		chooser.setFileSelectionMode(JFileChooser.FILES_ONLY);
 		putValue(NAME, ACT_NAME);
 	}
@@ -55,6 +54,7 @@ public class DownloadAction extends CloudAction {
 			if (file.getFileType() == FileType.FOLDER) {
 				JOptionPane.showMessageDialog(parent, "Select a file.", ACT_NAME, JOptionPane.ERROR_MESSAGE);
 			} else {
+				chooser.setCurrentDirectory(new File(parent.getPreferences().getFolder()));
 				chooser.setSelectedFile(new File(file.getName()));
 				int option = chooser.showSaveDialog(parent);
 				switch (option) {

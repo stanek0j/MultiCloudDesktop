@@ -24,23 +24,30 @@ import cz.zcu.kiv.multicloud.json.FileInfo;
  */
 public class SearchDialogListCellRenderer implements ListCellRenderer<FileInfo> {
 
+	/** File to be matched. */
+	private final FileInfo match;
 	/** If path should be displayed instead of file name. */
 	private final boolean path;
 	/** Folder icon. */
 	private final ImageIcon icnFolder;
 	/** File icon. */
 	private final ImageIcon icnFile;
+	/** Bad file icon. */
+	private final ImageIcon icnBadFile;
 
 	/**
 	 * Ctor with necessary parameters.
 	 * @param showPath If path should be displayed instead of file name.
 	 * @param folder Folder icon.
 	 * @param file File icon.
+	 * @param badFile Bad file icon.
 	 */
-	public SearchDialogListCellRenderer(boolean showPath, ImageIcon folder, ImageIcon file) {
+	public SearchDialogListCellRenderer(FileInfo matchFile, boolean showPath, ImageIcon folder, ImageIcon file, ImageIcon badFile) {
+		match = matchFile;
 		path = showPath;
 		icnFolder = folder;
 		icnFile = file;
+		icnBadFile = badFile;
 	}
 
 	/**
@@ -53,7 +60,19 @@ public class SearchDialogListCellRenderer implements ListCellRenderer<FileInfo> 
 		if (value.getFileType() == FileType.FOLDER) {
 			cellIcon.setIcon(icnFolder);
 		} else {
-			cellIcon.setIcon(icnFile);
+			if (match != null) {
+				if (match.getChecksum() == null || value.getChecksum() == null) {
+					cellIcon.setIcon(icnBadFile);
+				} else {
+					if (match.getChecksum().equals(value.getChecksum())) {
+						cellIcon.setIcon(icnFile);
+					} else {
+						cellIcon.setIcon(icnBadFile);
+					}
+				}
+			} else {
+				cellIcon.setIcon(icnFile);
+			}
 		}
 		cellIcon.setBorder(new EmptyBorder(2, 2, 2, 2));
 		JLabel cellTitle = new JLabel(value.getName());

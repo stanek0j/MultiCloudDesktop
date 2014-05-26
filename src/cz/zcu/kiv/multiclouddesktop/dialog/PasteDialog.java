@@ -71,7 +71,7 @@ public class PasteDialog extends JDialog {
 	public PasteDialog(Frame parent, String title, FileInfo file) {
 		this.option = JOptionPane.DEFAULT_OPTION;
 
-		lblName = new JLabel("Account name:");
+		lblName = new JLabel("File name:");
 		lblName.setBorder(new EmptyBorder(0, 0, 0, 8));
 		txtName = new JTextField();
 		txtName.setPreferredSize(new Dimension(200, txtName.getPreferredSize().height));

@@ -42,6 +42,8 @@ public class PreferencesDialog extends JDialog {
 	private final JButton btnCancel;
 	/** Confirmation button. */
 	private final JButton btnOk;
+	/** Check box for displaying checksum dialog. */
+	private final JCheckBox chckShowChecksumDialog;
 	/** Check box for showing deleted files. */
 	private final JCheckBox chckShowDeleted;
 	/** Check box for displaying error dialogs. */
@@ -60,6 +62,8 @@ public class PreferencesDialog extends JDialog {
 	private final JPanel buttonPanel;
 	/** Panel for choosing list display type. */
 	private final JPanel displayTypePanel;
+	/** Panel for holding checksum dialog check box. */
+	private final JPanel showChecksumDialogPanel;
 	/** Panel for holding deleted check box. */
 	private final JPanel showDeletedPanel;
 	/** Panel for holding error dialog check box. */
@@ -131,6 +135,13 @@ public class PreferencesDialog extends JDialog {
 		lblSpaceErrorDialog.setPreferredSize(new Dimension(labelWidth, lblSpaceErrorDialog.getPreferredSize().height));
 		showErrorDialogPanel.add(lblSpaceErrorDialog);
 		showErrorDialogPanel.add(chckShowErrorDialog);
+		chckShowChecksumDialog = new JCheckBox("Pop up confirmation dialog for computing checksum.");
+		showChecksumDialogPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
+		showChecksumDialogPanel.setBorder(new EmptyBorder(2, 8, 2, 8));
+		JLabel lblSpaceChecksumDialog = new JLabel();
+		lblSpaceChecksumDialog.setPreferredSize(new Dimension(labelWidth, lblSpaceChecksumDialog.getPreferredSize().height));
+		showChecksumDialogPanel.add(lblSpaceChecksumDialog);
+		showChecksumDialogPanel.add(chckShowChecksumDialog);
 		chckUploadNoOverwrite = new JCheckBox("Upload file even if overwrite was not selected (only for single upload).");
 		uploadNoOverwritePanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
 		uploadNoOverwritePanel.setBorder(new EmptyBorder(2, 8, 2, 8));
@@ -187,6 +198,7 @@ public class PreferencesDialog extends JDialog {
 		add(showDeletedPanel);
 		add(showSharedPanel);
 		add(showErrorDialogPanel);
+		add(showChecksumDialogPanel);
 		add(uploadNoOverwritePanel);
 		add(buttonPanel);
 
@@ -195,6 +207,7 @@ public class PreferencesDialog extends JDialog {
 		chckShowDeleted.setSelected(prefs.isShowDeleted());
 		chckShowShared.setSelected(prefs.isShowShared());
 		chckShowErrorDialog.setSelected(prefs.isShowErrorDialog());
+		chckShowChecksumDialog.setSelected(prefs.isShowChecksumDialog());
 		chckUploadNoOverwrite.setSelected(prefs.isUploadNoOverwrite());
 
 		pack();
@@ -220,6 +233,7 @@ public class PreferencesDialog extends JDialog {
 		prefs.setShowDeleted(chckShowDeleted.isSelected());
 		prefs.setShowShared(chckShowShared.isSelected());
 		prefs.setShowErrorDialog(chckShowErrorDialog.isSelected());
+		prefs.setShowChecksumDialog(chckShowChecksumDialog.isSelected());
 		prefs.setUploadNoOverwrite(chckUploadNoOverwrite.isSelected());
 		return prefs;
 	}
