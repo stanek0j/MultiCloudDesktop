@@ -36,6 +36,8 @@ public class ChecksumProvider {
 
 	/** Local checksum cache. */
 	private ChecksumCache cache;
+	/** Mapping account name to account identifier. */
+	private final Map<String, String> accounts;
 	/** Remote checksum caches. */
 	private final Map<String, FileInfo> remote;
 	/** Root folders of remote destinations. */
@@ -48,6 +50,7 @@ public class ChecksumProvider {
 	 */
 	public ChecksumProvider() {
 		json = Json.getInstance();
+		accounts = new HashMap<>();
 		remote = new HashMap<>();
 		root = new HashMap<>();
 		cacheLoad();
@@ -59,6 +62,10 @@ public class ChecksumProvider {
 	 * @param file File information.
 	 */
 	public synchronized void add(String account, FileInfo file) {
+		String id = accounts.get(account);
+		if (id == null) {
+			return;
+		}
 		if (file.getChecksum() != null) {
 			boolean matched = false;
 			for (Checksum ch: cache.getChecksums()) {
@@ -74,11 +81,20 @@ public class ChecksumProvider {
 				}
 			}
 			if (!matched) {
-				Checksum checksum = new Checksum(account, file);
+				Checksum checksum = new Checksum(id, file);
 				cache.getChecksums().add(checksum);
 			}
 			cacheSave();
 		}
+	}
+
+	/**
+	 * Adds account name to identifier mapping.
+	 * @param account Account name.
+	 * @param identifier Account identifier.
+	 */
+	public synchronized void addAccount(String account, String identifier) {
+		accounts.put(account, identifier);
 	}
 
 	/**
@@ -94,6 +110,8 @@ public class ChecksumProvider {
 		} catch (IOException e) {
 			cache = new ChecksumCache();
 			cache.setChecksums(new LinkedList<Checksum>());
+			cache.setRemote(new HashMap<String, Date>());
+			cache.setModified(new Date());
 		}
 	}
 
@@ -175,6 +193,15 @@ public class ChecksumProvider {
 	public synchronized boolean contains(Checksum checksum) {
 		boolean found = false;
 		for (Checksum ch: cache.getChecksums()) {
+			/* match account ID */
+			boolean condAcc = false;
+			if ((checksum.getAccount() == null) && (ch.getAccount() == null)) {
+				condAcc = true;
+			} else if ((checksum.getAccount() != null) && (ch.getAccount() != null)) {
+				condAcc = checksum.getAccount().equals(ch.getAccount());
+			} else {
+				continue;
+			}
 			/* match ID if present */
 			boolean condId = false;
 			if ((checksum.getId() == null) && (ch.getId() == null)) {
@@ -198,7 +225,7 @@ public class ChecksumProvider {
 			/* accept modified remote file */
 			boolean condMod = checksum.getModified().after(ch.getModified()) || checksum.getModified().equals(ch.getModified());
 			/* return result */
-			if (condId && condPath && condName && condMod) {
+			if (condAcc && condId && condPath && condName && condMod) {
 				found = true;
 				break;
 			}
@@ -213,7 +240,7 @@ public class ChecksumProvider {
 	 * @return If the checksum was found.
 	 */
 	public synchronized boolean contains(String account, FileInfo file) {
-		return contains(new Checksum(account, file));
+		return contains(new Checksum(accounts.get(account), file));
 	}
 
 	/**
@@ -222,7 +249,7 @@ public class ChecksumProvider {
 	 * @return Remote checksum cache file.
 	 */
 	public FileInfo getRemote(String account) {
-		return remote.get(account);
+		return remote.get(accounts.get(account));
 	}
 
 	/**
@@ -230,7 +257,7 @@ public class ChecksumProvider {
 	 * @return Account names.
 	 */
 	public Set<String> getRemoteAccounts() {
-		return remote.keySet();
+		return accounts.keySet();
 	}
 
 	/**
@@ -239,7 +266,7 @@ public class ChecksumProvider {
 	 * @return Modification date of remote checksum cache file.
 	 */
 	public Date getRemoteDate(String account) {
-		return cache.getRemote().get(account);
+		return cache.getRemote().get(accounts.get(account));
 	}
 
 	/**
@@ -248,7 +275,7 @@ public class ChecksumProvider {
 	 * @return Root of the remote folder.
 	 */
 	public FileInfo getRemoteRoot(String account) {
-		return root.get(account);
+		return root.get(accounts.get(account));
 	}
 
 	/**
@@ -259,6 +286,16 @@ public class ChecksumProvider {
 	 * @return If the file information match.
 	 */
 	public synchronized boolean match(Checksum checksum, String account, FileInfo file) {
+		String id = accounts.get(account);
+		/* match account ID */
+		boolean condAcc = false;
+		if ((checksum.getAccount() == null) && (id == null)) {
+			condAcc = true;
+		} else if ((checksum.getAccount() != null) && (id != null)) {
+			condAcc = checksum.getAccount().equals(id);
+		} else {
+			return false;
+		}
 		/* match ID if present */
 		boolean condId = false;
 		if ((checksum.getId() == null) && (file.getId() == null)) {
@@ -284,7 +321,7 @@ public class ChecksumProvider {
 		/* match SIZE */
 		boolean condSize = checksum.getSize() == file.getSize();
 		/* return result */
-		return (condId && condPath && condName && condMod && condSize);
+		return (condAcc && condId && condPath && condName && condMod && condSize);
 	}
 
 	/**
@@ -295,6 +332,16 @@ public class ChecksumProvider {
 	 * @return If the file information match.
 	 */
 	public synchronized boolean matchChange(Checksum checksum, String account, FileInfo file) {
+		String id = accounts.get(account);
+		/* match account ID */
+		boolean condAcc = false;
+		if ((checksum.getAccount() == null) && (id == null)) {
+			condAcc = true;
+		} else if ((checksum.getAccount() != null) && (id != null)) {
+			condAcc = checksum.getAccount().equals(id);
+		} else {
+			return false;
+		}
 		/* match ID if present */
 		boolean condId = false;
 		if ((checksum.getId() == null) && (file.getId() == null)) {
@@ -318,7 +365,7 @@ public class ChecksumProvider {
 		/* accept modified remote file */
 		boolean condMod = checksum.getModified().before(file.getModified());
 		/* return result */
-		return (condId && condPath && condName && condMod);
+		return (condAcc && condId && condPath && condName && condMod);
 	}
 
 	/**
@@ -377,10 +424,13 @@ public class ChecksumProvider {
 	 * @param file Remote checksum cache file.
 	 */
 	public void putRemote(String account, FileInfo folder, FileInfo file) {
-		remote.put(account, file);
-		root.put(account, folder);
-		cache.getRemote().put(account, file.getModified());
-		cacheSave();
+		String id = accounts.get(account);
+		if (id != null) {
+			remote.put(id, file);
+			root.put(id, folder);
+			cache.getRemote().put(id, file.getModified());
+			cacheSave();
+		}
 	}
 
 	/**
@@ -407,19 +457,23 @@ public class ChecksumProvider {
 	 * @param account Account name.
 	 */
 	public synchronized void removeAccount(String account) {
-		List<Checksum> remove = new ArrayList<>();
-		for (Checksum ch: cache.getChecksums()) {
-			if (ch.getAccount().equals(account)) {
-				remove.add(ch);
+		String id = accounts.get(account);
+		if (id != null) {
+			List<Checksum> remove = new ArrayList<>();
+			for (Checksum ch: cache.getChecksums()) {
+				if (ch.getAccount().equals(id)) {
+					remove.add(ch);
+				}
 			}
+			if (!remove.isEmpty()) {
+				cache.getChecksums().removeAll(remove);
+				cacheSave();
+			}
+			cache.getRemote().remove(id);
+			remote.remove(id);
+			root.remove(id);
+			accounts.remove(account);
 		}
-		if (!remove.isEmpty()) {
-			cache.getChecksums().removeAll(remove);
-			cacheSave();
-		}
-		cache.getRemote().remove(account);
-		remote.remove(account);
-		root.remove(account);
 	}
 
 	/**
@@ -431,17 +485,8 @@ public class ChecksumProvider {
 		if (oldAccount == null || newAccount == null || oldAccount.equals(newAccount)) {
 			return;
 		}
-		for (Checksum ch: cache.getChecksums()) {
-			if (ch.getAccount().equals(oldAccount)) {
-				ch.setAccount(newAccount);
-			}
-		}
-		cache.getRemote().put(newAccount, cache.getRemote().get(oldAccount));
-		cache.getRemote().remove(oldAccount);
-		remote.put(newAccount, remote.get(oldAccount));
-		remote.remove(oldAccount);
-		root.put(newAccount, root.get(oldAccount));
-		root.remove(oldAccount);
+		accounts.put(newAccount, accounts.get(oldAccount));
+		accounts.remove(oldAccount);
 		cacheSave();
 	}
 

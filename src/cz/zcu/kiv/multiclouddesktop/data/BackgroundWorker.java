@@ -463,17 +463,18 @@ public class BackgroundWorker extends Thread {
 	private synchronized void readRemoteCache() throws MultiCloudException, OAuth2SettingsException, InterruptedException {
 		ObjectMapper mapper = json.getMapper();
 		for (String accountName: cache.getRemoteAccounts()) {
-			FileInfo metadata = cloud.metadata(accountName, cache.getRemote(accountName));
-			if (cache.getRemoteDate(accountName) == null || metadata.getModified().after(cache.getRemoteDate(accountName))) {
-				cloud.downloadFile(accountName, metadata, tmpFile, true);
-				try {
-					ChecksumCache remote = mapper.readValue(tmpFile, ChecksumCache.class);
-					cache.merge(remote);
-				} catch (IOException e) {
-					/* ignore file exceptions */
+			if (cache.getRemote(accountName) != null) {
+				FileInfo metadata = cloud.metadata(accountName, cache.getRemote(accountName));
+				if (cache.getRemoteDate(accountName) == null || metadata.getModified().after(cache.getRemoteDate(accountName))) {
+					cloud.downloadFile(accountName, metadata, tmpFile, true);
+					try {
+						ChecksumCache remote = mapper.readValue(tmpFile, ChecksumCache.class);
+						cache.merge(remote);
+					} catch (IOException e) {
+						/* ignore file exceptions */
+					}
 				}
 			}
-
 		}
 	}
 
@@ -531,6 +532,7 @@ public class BackgroundWorker extends Thread {
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
+		ObjectMapper mapper = json.getMapper();
 		while (!shouldTerminate()) {
 			synchronized (this) {
 				if (task == BackgroundTask.NONE) {
@@ -550,29 +552,12 @@ public class BackgroundWorker extends Thread {
 					messageCallback.onFinish(task, "Loading remote checksum caches.", false);
 				}
 				boolean skip = false;
-				ObjectMapper mapper = json.getMapper();
-				/* find and download checksum caches */
-				FileInfo[] root = new FileInfo[accounts.length];
+				FileInfo[] root = null;
+				/* get account identifiers */
 				for (int i = 0; i < accounts.length; i++) {
 					try {
-						root[i] = cloud.listFolder(accounts[i], null);
-						if (root[i] != null) {
-							for (FileInfo f: root[i].getContent()) {
-								if (f.getName().equals(ChecksumProvider.CHECKSUM_FILE)) {
-									if (cache.getRemoteDate(accounts[i]) == null || f.getModified().after(cache.getRemoteDate(accounts[i]))) {
-										cloud.downloadFile(accounts[i], f, tmpFile, true);
-										try {
-											ChecksumCache remote = mapper.readValue(tmpFile, ChecksumCache.class);
-											cache.merge(remote);
-										} catch (IOException e) {
-											/* ignore file exceptions */
-										}
-									}
-									cache.putRemote(accounts[i], root[i], f);
-									break;
-								}
-							}
-						}
+						AccountInfo info = cloud.accountInfo(accounts[i]);
+						cache.addAccount(accounts[i], info.getId());
 					} catch (MultiCloudException | OAuth2SettingsException | InterruptedException e) {
 						synchronized (this) {
 							if (aborted) {
@@ -585,7 +570,43 @@ public class BackgroundWorker extends Thread {
 						}
 					}
 				}
-				tmpFile.delete();
+				/* find and download checksum caches */
+				if (!skip) {
+					root = new FileInfo[accounts.length];
+					for (int i = 0; i < accounts.length; i++) {
+						try {
+							root[i] = cloud.listFolder(accounts[i], null);
+							if (root[i] != null) {
+								for (FileInfo f: root[i].getContent()) {
+									if (f.getName().equals(ChecksumProvider.CHECKSUM_FILE)) {
+										if (cache.getRemoteDate(accounts[i]) == null || f.getModified().after(cache.getRemoteDate(accounts[i]))) {
+											cloud.downloadFile(accounts[i], f, tmpFile, true);
+											try {
+												ChecksumCache remote = mapper.readValue(tmpFile, ChecksumCache.class);
+												cache.merge(remote);
+											} catch (IOException e) {
+												/* ignore file exceptions */
+											}
+										}
+										cache.putRemote(accounts[i], root[i], f);
+										break;
+									}
+								}
+							}
+						} catch (MultiCloudException | OAuth2SettingsException | InterruptedException e) {
+							synchronized (this) {
+								if (aborted) {
+									if (messageCallback != null) {
+										messageCallback.onFinish(task, "Loading aborted.", true);
+									}
+									skip = true;
+									break;
+								}
+							}
+						}
+					}
+					tmpFile.delete();
+				}
 				/* upload local checksum cache to remote destinations */
 				if (!skip) {
 					for (int i = 0; i < accounts.length; i++) {
@@ -649,6 +670,9 @@ public class BackgroundWorker extends Thread {
 						}
 					}
 				}
+				if (messageCallback != null) {
+					messageCallback.onFinish(task, "Loading finished.", false);
+				}
 				break;
 			case REFRESH:
 				try {
@@ -658,6 +682,42 @@ public class BackgroundWorker extends Thread {
 					}
 					FileInfo list = cloud.listFolder(account, src, showDeleted, showShared);
 					if (list != null) {
+						for (FileInfo f: list.getContent()) {
+							if (f.getName().equals(ChecksumProvider.CHECKSUM_FILE)) {
+								if (cache.getRemoteDate(account) == null || f.getModified().after(cache.getRemoteDate(account))) {
+									cloud.downloadFile(account, f, tmpFile, true);
+									try {
+										ChecksumCache remote = mapper.readValue(tmpFile, ChecksumCache.class);
+										cache.merge(remote);
+									} catch (IOException e) {
+										/* ignore file exceptions */
+									}
+								}
+								cache.putRemote(account, list, f);
+								break;
+							}
+						}
+						FileInfo remote = cache.getRemote(account);
+						if (remote != null) {
+							/* update existing checksum cache file */
+							cloud.updateFile(account, cache.getRemoteRoot(account), remote, ChecksumProvider.CHECKSUM_FILE, new File(ChecksumProvider.CHECKSUM_FILE));
+							FileInfo metadata = cloud.metadata(account, remote);
+							if (metadata != null) {
+								cache.putRemote(account, cache.getRemoteRoot(account), metadata);
+							}
+						} else {
+							/* upload new checksum cache file */
+							cloud.uploadFile(account, cache.getRemoteRoot(account), ChecksumProvider.CHECKSUM_FILE, true, new File(ChecksumProvider.CHECKSUM_FILE));
+							FileInfo r = cloud.listFolder(account, cache.getRemoteRoot(account));
+							if (r != null) {
+								for (FileInfo f: r.getContent()) {
+									if (f.getName().equals(ChecksumProvider.CHECKSUM_FILE)) {
+										cache.putRemote(account, cache.getRemoteRoot(account), f);
+										break;
+									}
+								}
+							}
+						}
 						cache.provideChecksum(account, list);
 						cache.provideChecksum(account, list.getContent());
 					}
@@ -1157,7 +1217,7 @@ public class BackgroundWorker extends Thread {
 							cloud.addDownloadSource(accounts[i], srcs[i]);
 						}
 					}
-					cloud.downloadMultiFile(localFile, overwrite);
+					cloud.downloadMultiFile(tmpFile, overwrite);
 					if (dialog != null) {
 						synchronized (this) {
 							dialog = null;
@@ -1167,7 +1227,7 @@ public class BackgroundWorker extends Thread {
 						messageCallback.onFinish(task, "File downloaded, computing checksum.", false);
 					}
 					beginOperation();
-					String checksum = cache.computeChecksum(localFile);
+					String checksum = cache.computeChecksum(tmpFile);
 					src.setChecksum(checksum);
 					cache.add(account, src);
 					writeRemoteCache();
@@ -1179,7 +1239,7 @@ public class BackgroundWorker extends Thread {
 						messageCallback.onFinish(task, e.getMessage(), true);
 					}
 				}
-				localFile.delete();
+				tmpFile.delete();
 				break;
 			case NONE:
 			default:
