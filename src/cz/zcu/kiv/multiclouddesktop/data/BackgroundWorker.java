@@ -680,6 +680,7 @@ public class BackgroundWorker extends Thread {
 					if (quotaCallback != null) {
 						quotaCallback.onFinish(task, account, quota);
 					}
+					readRemoteCache();
 					FileInfo list = cloud.listFolder(account, src, showDeleted, showShared);
 					if (list != null) {
 						for (FileInfo f: list.getContent()) {
@@ -723,8 +724,6 @@ public class BackgroundWorker extends Thread {
 					}
 					parent.setCurrentAccount(account);
 					parent.setCurrentFolder(task, list);
-					readRemoteCache();
-					writeRemoteCache();
 					if (messageCallback != null) {
 						messageCallback.onFinish(task, "Account refreshed.", false);
 					}

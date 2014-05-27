@@ -21,6 +21,7 @@ import javax.swing.JSpinner;
 import javax.swing.SpinnerNumberModel;
 import javax.swing.border.EmptyBorder;
 
+import cz.zcu.kiv.multiclouddesktop.data.ChecksumProvider;
 import cz.zcu.kiv.multiclouddesktop.data.ListDisplayType;
 import cz.zcu.kiv.multiclouddesktop.data.Preferences;
 
@@ -50,6 +51,8 @@ public class PreferencesDialog extends JDialog {
 	private final JCheckBox chckShowErrorDialog;
 	/** Check box for showing shared files. */
 	private final JCheckBox chckShowShared;
+	/** Check box for hiding metadata file. */
+	private final JCheckBox chckHideMetadata;
 	/** Check box for uploading file without overwrite. */
 	private final JCheckBox chckUploadNoOverwrite;
 	/** Combo box for choosing list display type. */
@@ -70,6 +73,8 @@ public class PreferencesDialog extends JDialog {
 	private final JPanel showErrorDialogPanel;
 	/** Panel for holding shared check box. */
 	private final JPanel showSharedPanel;
+	/** Panel for holding hide metadata check box. */
+	private final JPanel hideMetadataPanel;
 	/** Panel for holding upload check box. */
 	private final JPanel uploadNoOverwritePanel;
 	/** Panel for choosing number of threads per account. */
@@ -142,6 +147,13 @@ public class PreferencesDialog extends JDialog {
 		lblSpaceChecksumDialog.setPreferredSize(new Dimension(labelWidth, lblSpaceChecksumDialog.getPreferredSize().height));
 		showChecksumDialogPanel.add(lblSpaceChecksumDialog);
 		showChecksumDialogPanel.add(chckShowChecksumDialog);
+		chckHideMetadata = new JCheckBox("Hide metadata file '" + ChecksumProvider.CHECKSUM_FILE + "' from file list.");
+		hideMetadataPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
+		hideMetadataPanel.setBorder(new EmptyBorder(2, 8, 2, 8));
+		JLabel lblSpaceHideMetadata = new JLabel();
+		lblSpaceHideMetadata.setPreferredSize(new Dimension(labelWidth, lblSpaceHideMetadata.getPreferredSize().height));
+		hideMetadataPanel.add(lblSpaceHideMetadata);
+		hideMetadataPanel.add(chckHideMetadata);
 		chckUploadNoOverwrite = new JCheckBox("Upload file even if overwrite was not selected (only for single upload).");
 		uploadNoOverwritePanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
 		uploadNoOverwritePanel.setBorder(new EmptyBorder(2, 8, 2, 8));
@@ -199,6 +211,7 @@ public class PreferencesDialog extends JDialog {
 		add(showSharedPanel);
 		add(showErrorDialogPanel);
 		add(showChecksumDialogPanel);
+		add(hideMetadataPanel);
 		add(uploadNoOverwritePanel);
 		add(buttonPanel);
 
@@ -208,6 +221,7 @@ public class PreferencesDialog extends JDialog {
 		chckShowShared.setSelected(prefs.isShowShared());
 		chckShowErrorDialog.setSelected(prefs.isShowErrorDialog());
 		chckShowChecksumDialog.setSelected(prefs.isShowChecksumDialog());
+		chckHideMetadata.setSelected(prefs.isHideMetadata());
 		chckUploadNoOverwrite.setSelected(prefs.isUploadNoOverwrite());
 
 		pack();
@@ -234,6 +248,7 @@ public class PreferencesDialog extends JDialog {
 		prefs.setShowShared(chckShowShared.isSelected());
 		prefs.setShowErrorDialog(chckShowErrorDialog.isSelected());
 		prefs.setShowChecksumDialog(chckShowChecksumDialog.isSelected());
+		prefs.setHideMetadata(chckHideMetadata.isSelected());
 		prefs.setUploadNoOverwrite(chckUploadNoOverwrite.isSelected());
 		return prefs;
 	}

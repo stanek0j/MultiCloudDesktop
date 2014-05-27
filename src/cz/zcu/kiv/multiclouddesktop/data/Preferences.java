@@ -25,6 +25,8 @@ public class Preferences {
 	public static final boolean DEFAULT_SHOW_ERROR_DIALOG = true;
 	/** Default value for showing checksum dialog. */
 	public static final boolean DEFAULT_SHOW_CHECKSUM_DIALOG = true;
+	/** Default value for hiding metadata file. */
+	public static final boolean DEFAULT_HIDE_METADATA = true;
 	/** Default value for uploading file without overwrite. */
 	public static final boolean DEFAULT_UPLOAD_NO_OVERWRITE = false;
 	/** Default local folder for listing. */
@@ -48,6 +50,9 @@ public class Preferences {
 	/** If the checksum dialog should be displayed. */
 	@JsonProperty("show_checksum_dialog")
 	private boolean showChecksumDialog;
+	/** If the metadata file should be hidden. */
+	@JsonProperty("hide_metadata")
+	private boolean hideMetadata;
 	/** If file should be uploaded without overwrite. */
 	@JsonProperty("upload_no_overwrite")
 	private boolean uploadNoOverwrite;
@@ -64,6 +69,7 @@ public class Preferences {
 		showShared = DEFAULT_SHOW_SHARED;
 		showErrorDialog = DEFAULT_SHOW_ERROR_DIALOG;
 		showChecksumDialog = DEFAULT_SHOW_CHECKSUM_DIALOG;
+		hideMetadata = DEFAULT_HIDE_METADATA;
 		uploadNoOverwrite = DEFAULT_UPLOAD_NO_OVERWRITE;
 		folder = DEFAULT_FOLDER;
 	}
@@ -90,6 +96,14 @@ public class Preferences {
 	 */
 	public int getThreadsPerAccount() {
 		return threadsPerAccount;
+	}
+
+	/**
+	 * Returns if the metadata file should be hidden.
+	 * @return If the metadata file should be hidden.
+	 */
+	public boolean isHideMetadata() {
+		return hideMetadata;
 	}
 
 	/**
@@ -146,6 +160,14 @@ public class Preferences {
 	 */
 	public void setFolder(String folder) {
 		this.folder = folder;
+	}
+
+	/**
+	 * Sets if the metadata file should be hidden.
+	 * @param hideMetadata If the metadata file should be hidden.
+	 */
+	public void setHideMetadata(boolean hideMetadata) {
+		this.hideMetadata = hideMetadata;
 	}
 
 	/**

@@ -70,6 +70,9 @@ public class FileInfoCallback implements BackgroundCallback<FileInfo> {
 		}
 		for (FileInfo f: result.getContent()) {
 			if (f.getFileType() == FileType.FILE) {
+				if (parent.getPreferences().isHideMetadata() && f.getName().equals(ChecksumProvider.CHECKSUM_FILE)) {
+					continue;
+				}
 				model.addElement(f);
 			}
 		}
