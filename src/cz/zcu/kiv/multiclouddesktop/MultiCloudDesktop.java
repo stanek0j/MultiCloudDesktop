@@ -399,7 +399,6 @@ public class MultiCloudDesktop extends JFrame {
 		ImageIcon icnFolderSmall = null;
 		ImageIcon icnFile = null;
 		ImageIcon icnFileSmall = null;
-		ImageIcon icnBadFile = null;
 		ImageIcon icnBadFileSmall = null;
 		ImageIcon icnCloud = null;
 		try {
@@ -420,7 +419,6 @@ public class MultiCloudDesktop extends JFrame {
 			icnFolderSmall = new ImageIcon(ImageIO.read(loader.getResourceAsStream("folder_small.png")));
 			icnFile = new ImageIcon(ImageIO.read(loader.getResourceAsStream("file.png")));
 			icnFileSmall = new ImageIcon(ImageIO.read(loader.getResourceAsStream("file_small.png")));
-			icnBadFile = new ImageIcon(ImageIO.read(loader.getResourceAsStream("bad_file.png")));
 			icnBadFileSmall = new ImageIcon(ImageIO.read(loader.getResourceAsStream("bad_file_small.png")));
 			icnCloud = new ImageIcon(ImageIO.read(loader.getResourceAsStream("cloud_96.png")));
 		} catch (IOException e) {
@@ -1044,12 +1042,11 @@ public class MultiCloudDesktop extends JFrame {
 	/**
 	 * Action callback for computing remote file checksum.
 	 * @param file File for computing checksum.
-	 * @param tmp Local temporary file.
 	 * @param dialog Progress dialog.
 	 */
-	public synchronized void actionChecksum(FileInfo file, File tmp, ProgressDialog dialog) {
+	public synchronized void actionChecksum(FileInfo file, ProgressDialog dialog) {
 		progressListener.setDialog(dialog);
-		worker.checksum(currentAccount, file, tmp, prefs.getThreadsPerAccount(), dialog);
+		worker.checksum(currentAccount, file, prefs.getThreadsPerAccount(), dialog);
 	}
 
 	/**

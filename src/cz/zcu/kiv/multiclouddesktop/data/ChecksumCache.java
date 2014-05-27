@@ -2,6 +2,7 @@ package cz.zcu.kiv.multiclouddesktop.data;
 
 import java.util.Date;
 import java.util.List;
+import java.util.Map;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 
@@ -18,6 +19,8 @@ public class ChecksumCache {
 
 	/** Modification date of the checksum cache. */
 	private Date modified;
+	/** Modification date of the remote caches. */
+	private Map<String, Date> remote;
 	/** List of remote file checksums. */
 	@JsonProperty("data")
 	private List<Checksum> checksums;
@@ -39,6 +42,14 @@ public class ChecksumCache {
 	}
 
 	/**
+	 * Returns the modification dates of remote caches.
+	 * @return Modification dated of remote caches.
+	 */
+	public Map<String, Date> getRemote() {
+		return remote;
+	}
+
+	/**
 	 * Sets list of remote file checksums.
 	 * @param checksums List of remote file checksums.
 	 */
@@ -52,6 +63,14 @@ public class ChecksumCache {
 	 */
 	public void setModified(Date modified) {
 		this.modified = modified;
+	}
+
+	/**
+	 * Sets the modification dates of remote caches.
+	 * @param remote Modification dates of remote caches.
+	 */
+	public void setRemote(Map<String, Date> remote) {
+		this.remote = remote;
 	}
 
 }

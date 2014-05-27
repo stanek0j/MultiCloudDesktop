@@ -9,8 +9,11 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 
@@ -33,6 +36,10 @@ public class ChecksumProvider {
 
 	/** Local checksum cache. */
 	private ChecksumCache cache;
+	/** Remote checksum caches. */
+	private final Map<String, FileInfo> remote;
+	/** Root folders of remote destinations. */
+	private final Map<String, FileInfo> root;
 	/** JSON parser instance. */
 	private final Json json;
 
@@ -41,6 +48,8 @@ public class ChecksumProvider {
 	 */
 	public ChecksumProvider() {
 		json = Json.getInstance();
+		remote = new HashMap<>();
+		root = new HashMap<>();
 		cacheLoad();
 	}
 
@@ -79,6 +88,9 @@ public class ChecksumProvider {
 		try {
 			ObjectMapper mapper = json.getMapper();
 			cache = mapper.readValue(new File(CHECKSUM_FILE), ChecksumCache.class);
+			if (cache.getRemote() == null) {
+				cache.setRemote(new HashMap<String, Date>());
+			}
 		} catch (IOException e) {
 			cache = new ChecksumCache();
 			cache.setChecksums(new LinkedList<Checksum>());
@@ -205,6 +217,41 @@ public class ChecksumProvider {
 	}
 
 	/**
+	 * Returns the remote checksum cache file.
+	 * @param account Account name.
+	 * @return Remote checksum cache file.
+	 */
+	public FileInfo getRemote(String account) {
+		return remote.get(account);
+	}
+
+	/**
+	 * Returns the account names for remote checksum cache files.
+	 * @return Account names.
+	 */
+	public Set<String> getRemoteAccounts() {
+		return remote.keySet();
+	}
+
+	/**
+	 * Returns the modification date of remote checksum cache file from cache.
+	 * @param account Account name.
+	 * @return Modification date of remote checksum cache file.
+	 */
+	public Date getRemoteDate(String account) {
+		return cache.getRemote().get(account);
+	}
+
+	/**
+	 * Returns the remote root folder.
+	 * @param account Account name.
+	 * @return Root of the remote folder.
+	 */
+	public FileInfo getRemoteRoot(String account) {
+		return root.get(account);
+	}
+
+	/**
 	 * Check if the checksum from the cache matches provided file information.
 	 * @param checksum Checksum from the cache.
 	 * @param account Account name.
@@ -279,7 +326,7 @@ public class ChecksumProvider {
 	 * @param mergeCache Supplied cache.
 	 */
 	public synchronized void merge(ChecksumCache mergeCache) {
-		if (cache != null) {
+		if (mergeCache != null) {
 			/* determine newer cache */
 			ChecksumCache temp;
 			if (cache.getModified().after(mergeCache.getModified())) {
@@ -294,6 +341,7 @@ public class ChecksumProvider {
 					cache.getChecksums().add(ch);
 				}
 			}
+			cacheSave();
 		}
 	}
 
@@ -320,6 +368,19 @@ public class ChecksumProvider {
 		for (FileInfo file: files) {
 			provideChecksum(account, file);
 		}
+	}
+
+	/**
+	 * Put remote checksum cache to local cache.
+	 * @param account Account name.
+	 * @param folder Remote root folder.
+	 * @param file Remote checksum cache file.
+	 */
+	public void putRemote(String account, FileInfo folder, FileInfo file) {
+		remote.put(account, file);
+		root.put(account, folder);
+		cache.getRemote().put(account, file.getModified());
+		cacheSave();
 	}
 
 	/**
@@ -356,6 +417,9 @@ public class ChecksumProvider {
 			cache.getChecksums().removeAll(remove);
 			cacheSave();
 		}
+		cache.getRemote().remove(account);
+		remote.remove(account);
+		root.remove(account);
 	}
 
 	/**
@@ -372,6 +436,12 @@ public class ChecksumProvider {
 				ch.setAccount(newAccount);
 			}
 		}
+		cache.getRemote().put(newAccount, cache.getRemote().get(oldAccount));
+		cache.getRemote().remove(oldAccount);
+		remote.put(newAccount, remote.get(oldAccount));
+		remote.remove(oldAccount);
+		root.put(newAccount, root.get(oldAccount));
+		root.remove(oldAccount);
 		cacheSave();
 	}
 

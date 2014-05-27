@@ -1,8 +1,6 @@
 package cz.zcu.kiv.multiclouddesktop.action;
 
 import java.awt.event.ActionEvent;
-import java.io.File;
-import java.io.IOException;
 
 import javax.swing.JCheckBox;
 import javax.swing.JComponent;
@@ -72,16 +70,11 @@ public class ChecksumAction extends CloudAction {
 				}
 				switch (option) {
 				case JOptionPane.YES_OPTION:
-					try {
-						File tmp = File.createTempFile("multicloud", ".tmp");
-						ProgressDialog dialog = new ProgressDialog(parent, parent.getProgressListener().getComponents(), ACT_NAME);
-						parent.actionChecksum(file, tmp, dialog);
-						dialog.setVisible(true);
-						if (dialog.isAborted()) {
-							parent.actionAbort();
-						}
-					} catch (IOException e) {
-						parent.getMessageCallback().displayError(e.getMessage());
+					ProgressDialog dialog = new ProgressDialog(parent, parent.getProgressListener().getComponents(), ACT_NAME);
+					parent.actionChecksum(file,dialog);
+					dialog.setVisible(true);
+					if (dialog.isAborted()) {
+						parent.actionAbort();
 					}
 					break;
 				case JOptionPane.NO_OPTION:

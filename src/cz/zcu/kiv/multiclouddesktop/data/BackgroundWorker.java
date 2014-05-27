@@ -1,10 +1,13 @@
 package cz.zcu.kiv.multiclouddesktop.data;
 
 import java.io.File;
+import java.io.IOException;
 import java.util.List;
 
 import javax.swing.JButton;
 import javax.swing.JProgressBar;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 import cz.zcu.kiv.multicloud.MultiCloud;
 import cz.zcu.kiv.multicloud.MultiCloudException;
@@ -12,6 +15,7 @@ import cz.zcu.kiv.multicloud.filesystem.FileType;
 import cz.zcu.kiv.multicloud.json.AccountInfo;
 import cz.zcu.kiv.multicloud.json.AccountQuota;
 import cz.zcu.kiv.multicloud.json.FileInfo;
+import cz.zcu.kiv.multicloud.json.Json;
 import cz.zcu.kiv.multicloud.json.ParentInfo;
 import cz.zcu.kiv.multicloud.oauth2.OAuth2SettingsException;
 import cz.zcu.kiv.multiclouddesktop.MultiCloudDesktop;
@@ -34,6 +38,8 @@ public class BackgroundWorker extends Thread {
 	private final MultiCloud cloud;
 	/** Checksum cache. */
 	private final ChecksumProvider cache;
+	/** JSON parser instance. */
+	private final Json json;
 	/** Abort button. */
 	private final JButton btnAbort;
 	/** Progress bar. */
@@ -72,6 +78,8 @@ public class BackgroundWorker extends Thread {
 	private String dstName;
 	/** Local file. */
 	private File localFile;
+	/** Local temporary file. */
+	private File tmpFile;
 	/** If the file should be overwritten. */
 	private boolean overwrite;
 	/** If deleted files should be displayed. */
@@ -117,6 +125,7 @@ public class BackgroundWorker extends Thread {
 		this.messageCallback = messageCallback;
 		this.task = BackgroundTask.NONE;
 		this.aborted = false;
+		this.json = Json.getInstance();
 	}
 
 	/**
@@ -302,11 +311,10 @@ public class BackgroundWorker extends Thread {
 	 * Preparing task for computing checksum of a file.
 	 * @param accountName Account name.
 	 * @param file File to compute checksum of.
-	 * @param target Local temporary file.
 	 * @param progressDialog Progress dialog.
 	 * @return If the task was initialized.
 	 */
-	public boolean checksum(String accountName, FileInfo file, File target, int threads, ProgressDialog progressDialog) {
+	public boolean checksum(String accountName, FileInfo file, int threads, ProgressDialog progressDialog) {
 		boolean ready = false;
 		synchronized (this) {
 			if (task == BackgroundTask.NONE) {
@@ -316,7 +324,6 @@ public class BackgroundWorker extends Thread {
 				accounts = new String[threads];
 				src = file;
 				srcs = new FileInfo[threads];
-				localFile = target;
 				overwrite = true;
 				for (int i = 0; i < threads; i++) {
 					accounts[i] = accountName;
@@ -448,6 +455,29 @@ public class BackgroundWorker extends Thread {
 	}
 
 	/**
+	 * Read remote checksum caches into local cache.
+	 * @throws MultiCloudException If the operation failed.
+	 * @throws OAuth2SettingsException If the authorization failed.
+	 * @throws InterruptedException If the token refreshing process was interrupted.
+	 */
+	private synchronized void readRemoteCache() throws MultiCloudException, OAuth2SettingsException, InterruptedException {
+		ObjectMapper mapper = json.getMapper();
+		for (String accountName: cache.getRemoteAccounts()) {
+			FileInfo metadata = cloud.metadata(accountName, cache.getRemote(accountName));
+			if (cache.getRemoteDate(accountName) == null || metadata.getModified().after(cache.getRemoteDate(accountName))) {
+				cloud.downloadFile(accountName, metadata, tmpFile, true);
+				try {
+					ChecksumCache remote = mapper.readValue(tmpFile, ChecksumCache.class);
+					cache.merge(remote);
+				} catch (IOException e) {
+					/* ignore file exceptions */
+				}
+			}
+
+		}
+	}
+
+	/**
 	 * Preparing task for refreshing account data.
 	 * @param accountName Account name.
 	 * @param folder Current folder.
@@ -496,6 +526,11 @@ public class BackgroundWorker extends Thread {
 	 */
 	@Override
 	public void run() {
+		try {
+			tmpFile = File.createTempFile("multicloud", ".tmp");
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
 		while (!shouldTerminate()) {
 			synchronized (this) {
 				if (task == BackgroundTask.NONE) {
@@ -511,11 +546,32 @@ public class BackgroundWorker extends Thread {
 			}
 			switch (task) {
 			case LOAD:
+				if (messageCallback != null) {
+					messageCallback.onFinish(task, "Loading remote checksum caches.", false);
+				}
+				boolean skip = false;
+				ObjectMapper mapper = json.getMapper();
+				/* find and download checksum caches */
+				FileInfo[] root = new FileInfo[accounts.length];
 				for (int i = 0; i < accounts.length; i++) {
 					try {
-						AccountQuota quota = cloud.accountQuota(accounts[i]);
-						if (quotaCallback != null) {
-							quotaCallback.onFinish(task, accounts[i], quota);
+						root[i] = cloud.listFolder(accounts[i], null);
+						if (root[i] != null) {
+							for (FileInfo f: root[i].getContent()) {
+								if (f.getName().equals(ChecksumProvider.CHECKSUM_FILE)) {
+									if (cache.getRemoteDate(accounts[i]) == null || f.getModified().after(cache.getRemoteDate(accounts[i]))) {
+										cloud.downloadFile(accounts[i], f, tmpFile, true);
+										try {
+											ChecksumCache remote = mapper.readValue(tmpFile, ChecksumCache.class);
+											cache.merge(remote);
+										} catch (IOException e) {
+											/* ignore file exceptions */
+										}
+									}
+									cache.putRemote(accounts[i], root[i], f);
+									break;
+								}
+							}
 						}
 					} catch (MultiCloudException | OAuth2SettingsException | InterruptedException e) {
 						synchronized (this) {
@@ -523,7 +579,72 @@ public class BackgroundWorker extends Thread {
 								if (messageCallback != null) {
 									messageCallback.onFinish(task, "Loading aborted.", true);
 								}
+								skip = true;
 								break;
+							}
+						}
+					}
+				}
+				tmpFile.delete();
+				/* upload local checksum cache to remote destinations */
+				if (!skip) {
+					for (int i = 0; i < accounts.length; i++) {
+						try {
+							if (root[i] != null) {
+								FileInfo remote = cache.getRemote(accounts[i]);
+								if (remote != null) {
+									/* update existing checksum cache file */
+									cloud.updateFile(accounts[i], root[i], remote, ChecksumProvider.CHECKSUM_FILE, new File(ChecksumProvider.CHECKSUM_FILE));
+									FileInfo metadata = cloud.metadata(accounts[i], remote);
+									if (metadata != null) {
+										cache.putRemote(accounts[i], root[i], metadata);
+									}
+								} else {
+									/* upload new checksum cache file */
+									cloud.uploadFile(accounts[i], root[i], ChecksumProvider.CHECKSUM_FILE, true, new File(ChecksumProvider.CHECKSUM_FILE));
+									root[i] = cloud.listFolder(accounts[i], root[i]);
+									if (root[i] != null) {
+										for (FileInfo f: root[i].getContent()) {
+											if (f.getName().equals(ChecksumProvider.CHECKSUM_FILE)) {
+												cache.putRemote(accounts[i], root[i], f);
+												break;
+											}
+										}
+									}
+								}
+							}
+						} catch (MultiCloudException | OAuth2SettingsException | InterruptedException e) {
+							synchronized (this) {
+								if (aborted) {
+									if (messageCallback != null) {
+										messageCallback.onFinish(task, "Loading aborted.", true);
+									}
+									skip = true;
+									break;
+								}
+							}
+						}
+					}
+				}
+				/* load quota information */
+				if (messageCallback != null) {
+					messageCallback.onFinish(task, "Loading account informations.", false);
+				}
+				if (!skip) {
+					for (int i = 0; i < accounts.length; i++) {
+						try {
+							AccountQuota quota = cloud.accountQuota(accounts[i]);
+							if (quotaCallback != null) {
+								quotaCallback.onFinish(task, accounts[i], quota);
+							}
+						} catch (MultiCloudException | OAuth2SettingsException | InterruptedException e) {
+							synchronized (this) {
+								if (aborted) {
+									if (messageCallback != null) {
+										messageCallback.onFinish(task, "Loading aborted.", true);
+									}
+									break;
+								}
 							}
 						}
 					}
@@ -542,6 +663,8 @@ public class BackgroundWorker extends Thread {
 					}
 					parent.setCurrentAccount(account);
 					parent.setCurrentFolder(task, list);
+					readRemoteCache();
+					writeRemoteCache();
 					if (messageCallback != null) {
 						messageCallback.onFinish(task, "Account refreshed.", false);
 					}
@@ -607,6 +730,7 @@ public class BackgroundWorker extends Thread {
 			case UPLOAD:
 				try {
 					String checksum = cache.computeChecksum(localFile);
+					readRemoteCache();
 					long start = System.currentTimeMillis();
 					if (dst != null) {
 						cloud.updateFile(account, src, dst, localFile.getName(), localFile);
@@ -669,6 +793,7 @@ public class BackgroundWorker extends Thread {
 						cache.provideChecksum(account, list.getContent());
 					}
 					parent.setCurrentFolder(task, list);
+					writeRemoteCache();
 					if (quotaCallback != null) {
 						quotaCallback.onFinish(task, account, quota);
 					}
@@ -690,6 +815,7 @@ public class BackgroundWorker extends Thread {
 			case MULTI_UPLOAD:
 				try {
 					String checksum = cache.computeChecksum(localFile);
+					readRemoteCache();
 					for (int i = 0; i < accounts.length; i++) {
 						if (srcs[i] != null) {
 							if (dsts[i] != null) {
@@ -766,6 +892,7 @@ public class BackgroundWorker extends Thread {
 						cache.provideChecksum(account, list.getContent());
 					}
 					parent.setCurrentFolder(task, list);
+					writeRemoteCache();
 					if (listCallback != null) {
 						listCallback.onFinish(task, account, list);
 					}
@@ -816,6 +943,7 @@ public class BackgroundWorker extends Thread {
 				break;
 			case LIST_FOLDER:
 				try {
+					readRemoteCache();
 					FileInfo list = cloud.listFolder(account, src, showDeleted, showShared);
 					if (list != null) {
 						cache.provideChecksum(account, list);
@@ -837,6 +965,7 @@ public class BackgroundWorker extends Thread {
 				break;
 			case CREATE_FOLDER:
 				try {
+					readRemoteCache();
 					cloud.createFolder(account, dstName, dst);
 					AccountQuota quota = cloud.accountQuota(account);
 					FileInfo list = cloud.listFolder(account, dst, showDeleted, showShared);
@@ -862,6 +991,7 @@ public class BackgroundWorker extends Thread {
 				break;
 			case RENAME:
 				try {
+					readRemoteCache();
 					FileInfo renamed = cloud.rename(account, src, dstName);
 					renamed.setChecksum(src.getChecksum());
 					cache.update(account, src, renamed);
@@ -872,8 +1002,9 @@ public class BackgroundWorker extends Thread {
 						cache.provideChecksum(account, list.getContent());
 					}
 					parent.setCurrentFolder(task, list);
+					writeRemoteCache();
 					if (messageCallback != null) {
-						messageCallback.onFinish(task, "Folder created.", false);
+						messageCallback.onFinish(task, "File or folder renamed.", false);
 					}
 					if (quotaCallback != null) {
 						quotaCallback.onFinish(task, account, quota);
@@ -889,6 +1020,7 @@ public class BackgroundWorker extends Thread {
 				break;
 			case MOVE:
 				try {
+					readRemoteCache();
 					FileInfo moved = cloud.move(account, src, dst, dstName);
 					moved.setChecksum(src.getChecksum());
 					cache.update(account, src, moved);
@@ -899,6 +1031,7 @@ public class BackgroundWorker extends Thread {
 						cache.provideChecksum(account, list.getContent());
 					}
 					parent.setCurrentFolder(task, list);
+					writeRemoteCache();
 					if (messageCallback != null) {
 						messageCallback.onFinish(task, "File moved.", false);
 					}
@@ -916,6 +1049,7 @@ public class BackgroundWorker extends Thread {
 				break;
 			case COPY:
 				try {
+					readRemoteCache();
 					FileInfo copied = cloud.copy(account, src, dst, dstName);
 					copied.setChecksum(src.getChecksum());
 					cache.add(account, copied);
@@ -926,6 +1060,7 @@ public class BackgroundWorker extends Thread {
 						cache.provideChecksum(account, list.getContent());
 					}
 					parent.setCurrentFolder(task, list);
+					writeRemoteCache();
 					if (messageCallback != null) {
 						messageCallback.onFinish(task, "File copied.", false);
 					}
@@ -943,6 +1078,7 @@ public class BackgroundWorker extends Thread {
 				break;
 			case DELETE:
 				try {
+					readRemoteCache();
 					cloud.delete(account, src);
 					cache.remove(account, src);
 					AccountQuota quota = cloud.accountQuota(account);
@@ -952,6 +1088,7 @@ public class BackgroundWorker extends Thread {
 						cache.provideChecksum(account, list.getContent());
 					}
 					parent.setCurrentFolder(task, list);
+					writeRemoteCache();
 					if (messageCallback != null) {
 						messageCallback.onFinish(task, "Deleted.", false);
 					}
@@ -1014,6 +1151,7 @@ public class BackgroundWorker extends Thread {
 				break;
 			case CHECKSUM:
 				try {
+					readRemoteCache();
 					for (int i = 0; i < accounts.length; i++) {
 						if (srcs[i] != null) {
 							cloud.addDownloadSource(accounts[i], srcs[i]);
@@ -1032,6 +1170,7 @@ public class BackgroundWorker extends Thread {
 					String checksum = cache.computeChecksum(localFile);
 					src.setChecksum(checksum);
 					cache.add(account, src);
+					writeRemoteCache();
 					if (messageCallback != null) {
 						messageCallback.onFinish(task, "Checksum computed.", false);
 					}
@@ -1141,6 +1280,25 @@ public class BackgroundWorker extends Thread {
 			}
 		}
 		return ready;
+	}
+
+	/**
+	 * Writes local checksum cache to remote destinations.
+	 * @throws MultiCloudException If the operation failed.
+	 * @throws OAuth2SettingsException If the authorization failed.
+	 * @throws InterruptedException If the token refreshing process was interrupted.
+	 */
+	private synchronized void writeRemoteCache() throws MultiCloudException, OAuth2SettingsException, InterruptedException {
+		for (String accountName: cache.getRemoteAccounts()) {
+			FileInfo remote = cache.getRemote(accountName);
+			if (remote != null) {
+				cloud.updateFile(accountName, cache.getRemoteRoot(accountName), remote, ChecksumProvider.CHECKSUM_FILE, new File(ChecksumProvider.CHECKSUM_FILE));
+				FileInfo metadata = cloud.metadata(accountName, remote);
+				if (metadata != null) {
+					cache.putRemote(accountName, cache.getRemoteRoot(accountName), metadata);
+				}
+			}
+		}
 	}
 
 }
