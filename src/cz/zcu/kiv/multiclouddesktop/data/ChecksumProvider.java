@@ -428,7 +428,9 @@ public class ChecksumProvider {
 		if (id != null) {
 			remote.put(id, file);
 			root.put(id, folder);
-			cache.getRemote().put(id, file.getModified());
+			if (file != null) {
+				cache.getRemote().put(id, file.getModified());
+			}
 			cacheSave();
 		}
 	}

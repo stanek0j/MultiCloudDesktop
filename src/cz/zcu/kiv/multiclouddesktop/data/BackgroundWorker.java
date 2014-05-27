@@ -590,6 +590,8 @@ public class BackgroundWorker extends Thread {
 										}
 										cache.putRemote(accounts[i], root[i], f);
 										break;
+									} else {
+										cache.putRemote(accounts[i], root[i], null);
 									}
 								}
 							}
@@ -609,40 +611,16 @@ public class BackgroundWorker extends Thread {
 				}
 				/* upload local checksum cache to remote destinations */
 				if (!skip) {
-					for (int i = 0; i < accounts.length; i++) {
-						try {
-							if (root[i] != null) {
-								FileInfo remote = cache.getRemote(accounts[i]);
-								if (remote != null) {
-									/* update existing checksum cache file */
-									cloud.updateFile(accounts[i], root[i], remote, ChecksumProvider.CHECKSUM_FILE, new File(ChecksumProvider.CHECKSUM_FILE));
-									FileInfo metadata = cloud.metadata(accounts[i], remote);
-									if (metadata != null) {
-										cache.putRemote(accounts[i], root[i], metadata);
-									}
-								} else {
-									/* upload new checksum cache file */
-									cloud.uploadFile(accounts[i], root[i], ChecksumProvider.CHECKSUM_FILE, true, new File(ChecksumProvider.CHECKSUM_FILE));
-									root[i] = cloud.listFolder(accounts[i], root[i]);
-									if (root[i] != null) {
-										for (FileInfo f: root[i].getContent()) {
-											if (f.getName().equals(ChecksumProvider.CHECKSUM_FILE)) {
-												cache.putRemote(accounts[i], root[i], f);
-												break;
-											}
-										}
-									}
+					try {
+						writeRemoteCache();
+					} catch (MultiCloudException | OAuth2SettingsException | InterruptedException e) {
+						synchronized (this) {
+							if (aborted) {
+								if (messageCallback != null) {
+									messageCallback.onFinish(task, "Loading aborted.", true);
 								}
-							}
-						} catch (MultiCloudException | OAuth2SettingsException | InterruptedException e) {
-							synchronized (this) {
-								if (aborted) {
-									if (messageCallback != null) {
-										messageCallback.onFinish(task, "Loading aborted.", true);
-									}
-									skip = true;
-									break;
-								}
+								skip = true;
+								break;
 							}
 						}
 					}
@@ -1351,10 +1329,23 @@ public class BackgroundWorker extends Thread {
 		for (String accountName: cache.getRemoteAccounts()) {
 			FileInfo remote = cache.getRemote(accountName);
 			if (remote != null) {
+				/* update existing metadata */
 				cloud.updateFile(accountName, cache.getRemoteRoot(accountName), remote, ChecksumProvider.CHECKSUM_FILE, new File(ChecksumProvider.CHECKSUM_FILE));
 				FileInfo metadata = cloud.metadata(accountName, remote);
 				if (metadata != null) {
 					cache.putRemote(accountName, cache.getRemoteRoot(accountName), metadata);
+				}
+			} else {
+				/* write new metadata */
+				cloud.uploadFile(account, cache.getRemoteRoot(account), ChecksumProvider.CHECKSUM_FILE, true, new File(ChecksumProvider.CHECKSUM_FILE));
+				FileInfo r = cloud.listFolder(account, cache.getRemoteRoot(account));
+				if (r != null) {
+					for (FileInfo f: r.getContent()) {
+						if (f.getName().equals(ChecksumProvider.CHECKSUM_FILE)) {
+							cache.putRemote(account, cache.getRemoteRoot(account), f);
+							break;
+						}
+					}
 				}
 			}
 		}
