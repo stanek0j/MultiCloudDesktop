@@ -4,6 +4,7 @@
 *.war
 *.ear
 /bin/
+/.multicloud
 /credentials.dat
 /accounts.json
 /abort.png

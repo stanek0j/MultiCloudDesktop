@@ -105,23 +105,28 @@ public class MultiDownloadAction extends CloudAction {
 					}
 				}
 				/* find matches on other clouds */
-				SearchDialog sDialog = new SearchDialog(parent, ACT_NAME, file, null, accounts, icnFolder, icnFile, icnBadFile);
-				sDialog.setVisible(true);
-				option = sDialog.getOption();
-				switch (option) {
-				case JOptionPane.OK_OPTION:
-					break;
-				case JOptionPane.CANCEL_OPTION:
-				case JOptionPane.CLOSED_OPTION:
-				default:
-					parent.getMessageCallback().displayMessage("Download cancelled.");
-					return;
+				FileInfo[] output = new FileInfo[1];
+				output[0] = file;
+				if (accounts.length > 1 || !accounts[0].isMatched()) {
+					SearchDialog sDialog = new SearchDialog(parent, ACT_NAME, file, null, accounts, icnFolder, icnFile, icnBadFile);
+					sDialog.setVisible(true);
+					option = sDialog.getOption();
+					switch (option) {
+					case JOptionPane.OK_OPTION:
+						output = sDialog.getOutput();
+						break;
+					case JOptionPane.CANCEL_OPTION:
+					case JOptionPane.CLOSED_OPTION:
+					default:
+						parent.getMessageCallback().displayMessage("Download cancelled.");
+						return;
+					}
 				}
 				/* confirm use of non-matching sources for file download, if possible */
 				boolean matched = true;
 				boolean possible = true;
 				if (file.getChecksum() != null) {
-					for (FileInfo f: sDialog.getOutput()) {
+					for (FileInfo f: output) {
 						if (f != null) {
 							if (f.getChecksum() != null) {
 								if (!file.getChecksum().equals(f.getChecksum())) {
@@ -136,7 +141,7 @@ public class MultiDownloadAction extends CloudAction {
 					}
 				} else {
 					String lastChecksum = null;
-					for (FileInfo f: sDialog.getOutput()) {
+					for (FileInfo f: output) {
 						if (f.getChecksum() != null) {
 							if (lastChecksum == null) {
 								lastChecksum = f.getChecksum();
@@ -179,7 +184,7 @@ public class MultiDownloadAction extends CloudAction {
 					for (int i = 0; i < accounts.length; i++) {
 						accountNames[i] = accounts[i].getName();
 					}
-					parent.actionMultiDownload(accountNames, sDialog.getOutput(), target, chooser.isOverwrite(), dialog);
+					parent.actionMultiDownload(accountNames, output, target, chooser.isOverwrite(), dialog);
 					dialog.setVisible(true);
 					if (dialog.isAborted()) {
 						parent.actionAbort();
