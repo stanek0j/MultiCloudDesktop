@@ -81,6 +81,7 @@ import cz.zcu.kiv.multiclouddesktop.action.RefreshAction;
 import cz.zcu.kiv.multiclouddesktop.action.RemoveAccountAction;
 import cz.zcu.kiv.multiclouddesktop.action.RenameAccountAction;
 import cz.zcu.kiv.multiclouddesktop.action.RenameAction;
+import cz.zcu.kiv.multiclouddesktop.action.SynchronizeAction;
 import cz.zcu.kiv.multiclouddesktop.action.TransferType;
 import cz.zcu.kiv.multiclouddesktop.action.UploadAction;
 import cz.zcu.kiv.multiclouddesktop.data.AccountData;
@@ -182,6 +183,8 @@ public class MultiCloudDesktop extends JFrame {
 	private final JMenuBar menuBar;
 	/** File menu. */
 	private final JMenu mnFile;
+	/** Synchronize menu item. */
+	private final JMenuItem mntmSynchronize;
 	/** Preferences menu item. */
 	private final JMenuItem mntmPreferences;
 	/** Exit menu item. */
@@ -285,6 +288,8 @@ public class MultiCloudDesktop extends JFrame {
 	/** Properties menu item. */
 	private final JMenuItem mntmPropertiesPop;
 
+	/** Action for synchronizing folders. */
+	private final Action actSynchronize;
 	/** Action for displaying preferences. */
 	private final Action actPreferences;
 	/** Action for exiting application. */
@@ -362,6 +367,8 @@ public class MultiCloudDesktop extends JFrame {
 	private String currentAccount;
 	/** Current folder. */
 	private FileInfo currentFolder;
+	/** Source account of the transferred file. */
+	private String transferAccount;
 	/** File to be moved or copied. */
 	private FileInfo transferFile;
 	/** Move or copy transfer. */
@@ -380,6 +387,7 @@ public class MultiCloudDesktop extends JFrame {
 	 */
 	public MultiCloudDesktop() {
 		loader = MultiCloudDesktop.class.getClassLoader();
+		transferAccount = null;
 		transferFile = null;
 		transferType = TransferType.NONE;
 		lock = new Object();
@@ -460,15 +468,18 @@ public class MultiCloudDesktop extends JFrame {
 					switch (event.getKeyCode()) {
 					case KeyEvent.VK_ENTER:
 					case KeyEvent.VK_SPACE:
-						if (account != null) {
+						if (account.isAuthorized()) {
 							synchronized (lock) {
 								currentFolder = null;
 								currentPath.clear();
 							}
 							worker.listFolder(account.getName(), null);
+						} else {
+							actAuthorize.actionPerformed(null);
 						}
 						break;
 					case KeyEvent.VK_DELETE:
+						actRemoveAccount.actionPerformed(null);
 						break;
 					default:
 						break;
@@ -482,11 +493,15 @@ public class MultiCloudDesktop extends JFrame {
 				AccountData account = accountList.getSelectedValue();
 				if (SwingUtilities.isLeftMouseButton(event) && event.getClickCount() == 2) {
 					if (account != null) {
-						synchronized (lock) {
-							currentFolder = null;
-							currentPath.clear();
+						if (account.isAuthorized()) {
+							synchronized (lock) {
+								currentFolder = null;
+								currentPath.clear();
+							}
+							worker.listFolder(account.getName(), null);
+						} else {
+							actAuthorize.actionPerformed(null);
 						}
-						worker.listFolder(account.getName(), null);
 					}
 				}
 			}
@@ -640,8 +655,9 @@ public class MultiCloudDesktop extends JFrame {
 			}
 		});
 
-		/* shared action */
-		actPreferences = new PreferencesAction(this);
+		/* shared actions */
+		actSynchronize = new SynchronizeAction(this);
+		actPreferences = new PreferencesAction(this, icnFolderSmall);
 		actExit = new ExitAction(this);
 
 		actAddAccount = new AddAccountAction(this);
@@ -683,6 +699,10 @@ public class MultiCloudDesktop extends JFrame {
 		mnFile = new JMenu("File");
 		mnFile.setMargin(new Insets(4, 4, 4, 4));
 		menuBar.add(mnFile);
+
+		mntmSynchronize = new JMenuItem();
+		mntmSynchronize.setAction(actSynchronize);
+		mnFile.add(mntmSynchronize);
 
 		mntmPreferences = new JMenuItem();
 		mntmPreferences.setAction(actPreferences);
@@ -981,6 +1001,7 @@ public class MultiCloudDesktop extends JFrame {
 	 * @param file File to be copied.
 	 */
 	public synchronized void actionCopy(FileInfo file) {
+		transferAccount = currentAccount;
 		transferFile = file;
 		transferType = TransferType.COPY;
 	}
@@ -998,6 +1019,7 @@ public class MultiCloudDesktop extends JFrame {
 	 * @param file File to be moved.
 	 */
 	public synchronized void actionCut(FileInfo file) {
+		transferAccount = currentAccount;
 		transferFile = file;
 		transferType = TransferType.MOVE;
 	}
@@ -1111,23 +1133,37 @@ public class MultiCloudDesktop extends JFrame {
 	/**
 	 * Action callback for pasting a file.
 	 * @param name New name for the file.
+	 * @param existing File to be updated.
+	 * @param dialog Progress dialog.
 	 */
-	public synchronized void actionPaste(String name) {
-		switch (transferType) {
-		case COPY:
-			messageCallback.displayMessage("Copying file...");
-			worker.copy(currentAccount, transferFile, currentFolder, name);
-			break;
-		case MOVE:
-			messageCallback.displayMessage("Moving file...");
-			worker.move(currentAccount, transferFile, currentFolder, name);
-			break;
-		case NONE:
-		default:
-			break;
+	public synchronized void actionPaste(String name, FileInfo existing, ProgressDialog dialog) {
+		if (currentAccount.equals(transferAccount)) {
+			switch (transferType) {
+			case COPY:
+				messageCallback.displayMessage("Copying file...");
+				worker.copy(currentAccount, transferFile, currentFolder, name);
+				break;
+			case MOVE:
+				messageCallback.displayMessage("Moving file...");
+				worker.move(currentAccount, transferFile, currentFolder, name);
+				transferAccount = null;
+				transferFile = null;
+				transferType = TransferType.NONE;
+				break;
+			case NONE:
+			default:
+				break;
+			}
+		} else {
+			progressListener.setDialog(dialog);
+			messageCallback.displayMessage("Transfering file between accounts...");
+			worker.transfer(transferAccount, transferFile, prefs.getThreadsPerAccount(), (transferType == TransferType.MOVE), currentAccount, currentFolder, existing, name, dialog);
+			if (transferType == TransferType.MOVE) {
+				transferAccount = null;
+				transferFile = null;
+				transferType = TransferType.NONE;
+			}
 		}
-		transferFile = null;
-		transferType = TransferType.NONE;
 	}
 
 	/**
@@ -1227,6 +1263,10 @@ public class MultiCloudDesktop extends JFrame {
 	 */
 	public synchronized boolean actionSearch(String account, String query, SearchCallback callback) {
 		return worker.search(account, query, callback);
+	}
+
+	public synchronized void actionSynchronize() {
+
 	}
 
 	/**
@@ -1351,6 +1391,14 @@ public class MultiCloudDesktop extends JFrame {
 	 */
 	public DialogProgressListener getProgressListener() {
 		return progressListener;
+	}
+
+	/**
+	 * Returns the account name to move or copy file from.
+	 * @return Account name to move or copy file from.
+	 */
+	public synchronized String getTransferAccount() {
+		return transferAccount;
 	}
 
 	/**

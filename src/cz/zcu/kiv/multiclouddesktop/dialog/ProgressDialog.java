@@ -28,6 +28,8 @@ public class ProgressDialog extends JDialog {
 
 	/** If the abort button was clicked. */
 	private boolean aborted;
+	/** If dialog closing should be prevented. */
+	private boolean prevent;
 
 	/**
 	 * Ctor with necessary parameters.
@@ -52,7 +54,7 @@ public class ProgressDialog extends JDialog {
 			@Override
 			public void actionPerformed(ActionEvent event) {
 				aborted = true;
-				dispose();
+				setVisible(false);
 			}
 		});
 		JPanel buttonPanel = new JPanel();
@@ -63,13 +65,16 @@ public class ProgressDialog extends JDialog {
 		setLocationRelativeTo(parent);
 		setModalityType(ModalityType.APPLICATION_MODAL);
 		aborted = false;
+		prevent = false;
 	}
 
 	/**
 	 * Closes the dialog from other thread.
 	 */
 	public void closeDialog() {
-		dispose();
+		if (!prevent) {
+			setVisible(false);
+		}
 	}
 
 	/**
@@ -78,6 +83,14 @@ public class ProgressDialog extends JDialog {
 	 */
 	public boolean isAborted() {
 		return aborted;
+	}
+
+	/**
+	 * Sets if dialog closing should be prevented.
+	 * @param prevent If dialog closing should be prevented.
+	 */
+	public void preventClosing(boolean prevent) {
+		this.prevent = prevent;
 	}
 
 }

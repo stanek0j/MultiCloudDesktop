@@ -91,7 +91,7 @@ public class PasteDialog extends JDialog {
 		nameErrPanel.add(lblNameErr);
 		lblOverwrite = new JLabel();
 		lblOverwrite.setPreferredSize(lblName.getPreferredSize());
-		chckOverwrite = new JCheckBox("Overwrite");
+		chckOverwrite = new JCheckBox("Overwrite, if supported.");
 		chckOverwrite.setSelected(true);
 		overwritePanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
 		overwritePanel.setBorder(new EmptyBorder(2, 8, 2, 8));

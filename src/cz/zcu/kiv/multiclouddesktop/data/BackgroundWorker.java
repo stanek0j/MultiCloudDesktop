@@ -465,7 +465,7 @@ public class BackgroundWorker extends Thread {
 		for (String accountName: cache.getRemoteAccounts()) {
 			if (cache.getRemote(accountName) != null) {
 				FileInfo metadata = cloud.metadata(accountName, cache.getRemote(accountName));
-				if (cache.getRemoteDate(accountName) == null || metadata.getModified().after(cache.getRemoteDate(accountName))) {
+				if (cache.getRemoteDate(accountName) == null || (metadata != null && metadata.getModified().after(cache.getRemoteDate(accountName)))) {
 					cloud.downloadFile(accountName, metadata, tmpFile, true);
 					try {
 						ChecksumCache remote = mapper.readValue(tmpFile, ChecksumCache.class);
@@ -652,8 +652,12 @@ public class BackgroundWorker extends Thread {
 					messageCallback.onFinish(task, "Loading finished.", false);
 				}
 				break;
+			case SYNCHRONIZE:
+				break;
 			case REFRESH:
 				try {
+					AccountInfo info = cloud.accountInfo(account);
+					cache.addAccount(account, info.getId());
 					AccountQuota quota = cloud.accountQuota(account);
 					if (quotaCallback != null) {
 						quotaCallback.onFinish(task, account, quota);
@@ -676,23 +680,30 @@ public class BackgroundWorker extends Thread {
 								break;
 							}
 						}
+						FileInfo remoteRoot = cache.getRemoteRoot(account);
 						FileInfo remote = cache.getRemote(account);
-						if (remote != null) {
-							/* update existing checksum cache file */
-							cloud.updateFile(account, cache.getRemoteRoot(account), remote, ChecksumProvider.CHECKSUM_FILE, new File(ChecksumProvider.CHECKSUM_FILE));
-							FileInfo metadata = cloud.metadata(account, remote);
-							if (metadata != null) {
-								cache.putRemote(account, cache.getRemoteRoot(account), metadata);
-							}
-						} else {
-							/* upload new checksum cache file */
-							cloud.uploadFile(account, cache.getRemoteRoot(account), ChecksumProvider.CHECKSUM_FILE, true, new File(ChecksumProvider.CHECKSUM_FILE));
-							FileInfo r = cloud.listFolder(account, cache.getRemoteRoot(account));
-							if (r != null) {
-								for (FileInfo f: r.getContent()) {
-									if (f.getName().equals(ChecksumProvider.CHECKSUM_FILE)) {
-										cache.putRemote(account, cache.getRemoteRoot(account), f);
-										break;
+						if (remoteRoot == null) {
+							remoteRoot = cloud.listFolder(account, null);
+							cache.putRemote(account, remoteRoot, remote);
+						}
+						if (remoteRoot != null) {
+							if (remote != null) {
+								/* update existing checksum cache file */
+								cloud.updateFile(account, remoteRoot, remote, ChecksumProvider.CHECKSUM_FILE, new File(ChecksumProvider.CHECKSUM_FILE));
+								FileInfo metadata = cloud.metadata(account, remote);
+								if (metadata != null) {
+									cache.putRemote(account, remoteRoot, metadata);
+								}
+							} else {
+								/* upload new checksum cache file */
+								cloud.uploadFile(account, remoteRoot, ChecksumProvider.CHECKSUM_FILE, true, new File(ChecksumProvider.CHECKSUM_FILE));
+								FileInfo r = cloud.listFolder(account, remoteRoot);
+								if (r != null) {
+									for (FileInfo f: r.getContent()) {
+										if (f.getName().equals(ChecksumProvider.CHECKSUM_FILE)) {
+											cache.putRemote(account, remoteRoot, f);
+											break;
+										}
 									}
 								}
 							}
@@ -709,6 +720,7 @@ public class BackgroundWorker extends Thread {
 						listCallback.onFinish(task, account, list);
 					}
 				} catch (MultiCloudException | OAuth2SettingsException | InterruptedException e) {
+					e.printStackTrace();
 					if (messageCallback != null) {
 						messageCallback.onFinish(task, e.getMessage(), true);
 					}
@@ -1059,8 +1071,10 @@ public class BackgroundWorker extends Thread {
 				try {
 					readRemoteCache();
 					FileInfo moved = cloud.move(account, src, dst, dstName);
-					moved.setChecksum(src.getChecksum());
-					cache.update(account, src, moved);
+					if (moved != null) {
+						moved.setChecksum(src.getChecksum());
+						cache.update(account, src, moved);
+					}
 					AccountQuota quota = cloud.accountQuota(account);
 					FileInfo list = cloud.listFolder(account, dst, showDeleted, showShared);
 					if (list != null) {
@@ -1068,7 +1082,9 @@ public class BackgroundWorker extends Thread {
 						cache.provideChecksum(account, list.getContent());
 					}
 					parent.setCurrentFolder(task, list);
-					writeRemoteCache();
+					if (moved != null) {
+						writeRemoteCache();
+					}
 					if (messageCallback != null) {
 						messageCallback.onFinish(task, "File moved.", false);
 					}
@@ -1088,8 +1104,10 @@ public class BackgroundWorker extends Thread {
 				try {
 					readRemoteCache();
 					FileInfo copied = cloud.copy(account, src, dst, dstName);
-					copied.setChecksum(src.getChecksum());
-					cache.add(account, copied);
+					if (copied != null) {
+						copied.setChecksum(src.getChecksum());
+						cache.add(account, copied);
+					}
 					AccountQuota quota = cloud.accountQuota(account);
 					FileInfo list = cloud.listFolder(account, dst, showDeleted, showShared);
 					if (list != null) {
@@ -1097,7 +1115,9 @@ public class BackgroundWorker extends Thread {
 						cache.provideChecksum(account, list.getContent());
 					}
 					parent.setCurrentFolder(task, list);
-					writeRemoteCache();
+					if (copied != null) {
+						writeRemoteCache();
+					}
 					if (messageCallback != null) {
 						messageCallback.onFinish(task, "File copied.", false);
 					}
@@ -1112,6 +1132,118 @@ public class BackgroundWorker extends Thread {
 						messageCallback.onFinish(task, e.getMessage(), true);
 					}
 				}
+				break;
+			case TRANSFER:
+				try {
+					readRemoteCache();
+					/* download file from original source */
+					dialog.preventClosing(true);
+					for (int i = 0; i < accounts.length; i++) {
+						if (srcs[i] != null) {
+							cloud.addDownloadSource(accounts[i], srcs[i]);
+						}
+					}
+					long start = System.currentTimeMillis();
+					cloud.downloadMultiFile(tmpFile, true);
+					/* compute checksum locally */
+					String checksum = cache.computeChecksum(tmpFile);
+					/* upload file to remote destination */
+					parent.getProgressListener().getComponents(); // reset dialog
+					dialog.preventClosing(false);
+					if (dst != null) {
+						cloud.updateFile(account, src, dst, dstName, tmpFile);
+					} else {
+						cloud.uploadFile(account, src, dstName, true, tmpFile);
+					}
+					beginOperation();
+					if (dialog != null) {
+						synchronized (this) {
+							dialog = null;
+						}
+					}
+					/* delete source file, if the file should have been moved */
+					if (overwrite) {
+						cloud.delete(accounts[0], srcs[0]);
+						cache.remove(accounts[0], srcs[0]);
+					}
+					double time = (System.currentTimeMillis() - start) / 1000.0;
+					if (messageCallback != null) {
+						messageCallback.onFinish(task, "Transfer finished in " + String.format("%.2f", time) + " seconds.", false);
+					}
+					/* refresh account and data list */
+					AccountQuota srcQuota = null;
+					if (overwrite) {
+						srcQuota = cloud.accountQuota(accounts[0]);
+					}
+					AccountQuota dstQuota = cloud.accountQuota(account);
+					FileInfo list = cloud.listFolder(account, src, showDeleted, showShared);
+					if (list != null) {
+						for (FileInfo content: list.getContent()) {
+							if (!src.getContent().contains(content)) {
+								/* new file uploaded */
+								if (content.getName().equals(dstName) && content.getSize() == srcs[0].getSize()) {
+									content.setChecksum(checksum);
+									cache.add(account, content);
+									break;
+								}
+							} else {
+								if (dst == null) {
+									continue;
+								}
+								/* match ID if present */
+								boolean condId = false;
+								if ((content.getId() == null) && (dst.getId() == null)) {
+									condId = true;
+								} else if ((content.getId() != null) && (dst.getId() != null)) {
+									condId = content.getId().equals(dst.getId());
+								} else {
+									continue;
+								}
+								/* match PATH if present */
+								boolean condPath = false;
+								if ((content.getPath() == null) && (dst.getPath() == null)) {
+									condPath = true;
+								} else if ((content.getPath() != null) && (dst.getPath() != null)) {
+									condPath = content.getPath().equals(dst.getPath());
+								} else {
+									continue;
+								}
+								/* match NAME */
+								boolean condName = (dst != null && content.getName().equals(dst.getName()));
+								if (condId && condPath && condName) {
+									content.setChecksum(checksum);
+									cache.add(account, content);
+									break;
+								}
+							}
+						}
+						cache.provideChecksum(account, list);
+						cache.provideChecksum(account, list.getContent());
+					}
+					parent.setCurrentFolder(task, list);
+					writeRemoteCache();
+					if (quotaCallback != null) {
+						if (overwrite) {
+							quotaCallback.onFinish(task, accounts[0], srcQuota);
+						}
+						quotaCallback.onFinish(task, account, dstQuota);
+					}
+					if (listCallback != null) {
+						listCallback.onFinish(task, account, list);
+					}
+				} catch (MultiCloudException | OAuth2SettingsException | InterruptedException e) {
+					if (dialog != null) {
+						synchronized (this) {
+							dialog.closeDialog();
+							dialog = null;
+						}
+					}
+					if (messageCallback != null) {
+						messageCallback.onFinish(task, e.getMessage(), true);
+					}
+				}
+				/* clean up */
+				tmpFile.delete();
 				break;
 			case DELETE:
 				try {
@@ -1292,6 +1424,43 @@ public class BackgroundWorker extends Thread {
 	}
 
 	/**
+	 * Preparing task for file transfer between accounts.
+	 * @param srcAccount Source account name.
+	 * @param source Source file to be transferred.
+	 * @param move If the source file should be moved.
+	 * @param dstAccount Destination account name.
+	 * @param folder Destination folder to upload to.
+	 * @param destination Destination file to be updated.
+	 * @param destinationName New file name.
+	 * @param update If the file contents should be updated.
+	 * @param progressDialog Progress dialog.
+	 * @return If the task was initialized.
+	 */
+	public boolean transfer(String srcAccount, FileInfo source, int threads, boolean move, String dstAccount, FileInfo folder, FileInfo destination, String destinationName, ProgressDialog progressDialog) {
+		boolean ready = false;
+		synchronized (this) {
+			if (task == BackgroundTask.NONE) {
+				task = BackgroundTask.TRANSFER;
+				dialog = progressDialog;
+				account = dstAccount;
+				accounts = new String[threads];
+				src = folder;
+				srcs = new FileInfo[threads];
+				dst = destination;
+				dstName = destinationName;
+				overwrite = move;
+				for (int i = 0; i < threads; i++) {
+					accounts[i] = srcAccount;
+					srcs[i] = source;
+				}
+				ready = true;
+				notifyAll();
+			}
+		}
+		return ready;
+	}
+
+	/**
 	 * Preparing task for uploading a file to cloud storage.
 	 * @param accountName Account name.
 	 * @param file Local file to be uploaded.
@@ -1327,23 +1496,26 @@ public class BackgroundWorker extends Thread {
 	 */
 	private synchronized void writeRemoteCache() throws MultiCloudException, OAuth2SettingsException, InterruptedException {
 		for (String accountName: cache.getRemoteAccounts()) {
+			FileInfo remoteRoot = cache.getRemoteRoot(accountName);
 			FileInfo remote = cache.getRemote(accountName);
-			if (remote != null) {
-				/* update existing metadata */
-				cloud.updateFile(accountName, cache.getRemoteRoot(accountName), remote, ChecksumProvider.CHECKSUM_FILE, new File(ChecksumProvider.CHECKSUM_FILE));
-				FileInfo metadata = cloud.metadata(accountName, remote);
-				if (metadata != null) {
-					cache.putRemote(accountName, cache.getRemoteRoot(accountName), metadata);
-				}
-			} else {
-				/* write new metadata */
-				cloud.uploadFile(account, cache.getRemoteRoot(account), ChecksumProvider.CHECKSUM_FILE, true, new File(ChecksumProvider.CHECKSUM_FILE));
-				FileInfo r = cloud.listFolder(account, cache.getRemoteRoot(account));
-				if (r != null) {
-					for (FileInfo f: r.getContent()) {
-						if (f.getName().equals(ChecksumProvider.CHECKSUM_FILE)) {
-							cache.putRemote(account, cache.getRemoteRoot(account), f);
-							break;
+			if (remoteRoot != null) {
+				if (remote != null) {
+					/* update existing metadata */
+					cloud.updateFile(accountName, remoteRoot, remote, ChecksumProvider.CHECKSUM_FILE, new File(ChecksumProvider.CHECKSUM_FILE));
+					FileInfo metadata = cloud.metadata(accountName, remote);
+					if (metadata != null) {
+						cache.putRemote(accountName, remoteRoot, metadata);
+					}
+				} else {
+					/* write new metadata */
+					cloud.uploadFile(account, remoteRoot, ChecksumProvider.CHECKSUM_FILE, true, new File(ChecksumProvider.CHECKSUM_FILE));
+					FileInfo r = cloud.listFolder(account, remoteRoot);
+					if (r != null) {
+						for (FileInfo f: r.getContent()) {
+							if (f.getName().equals(ChecksumProvider.CHECKSUM_FILE)) {
+								cache.putRemote(account, remoteRoot, f);
+								break;
+							}
 						}
 					}
 				}

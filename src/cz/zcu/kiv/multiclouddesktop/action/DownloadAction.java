@@ -73,7 +73,7 @@ public class DownloadAction extends CloudAction {
 				case JFileChooser.CANCEL_OPTION:
 				case JFileChooser.ERROR_OPTION:
 				default:
-					parent.getMessageCallback().displayMessage("Download canceled.");
+					parent.getMessageCallback().displayMessage("Download cancelled.");
 					break;
 				}
 			}

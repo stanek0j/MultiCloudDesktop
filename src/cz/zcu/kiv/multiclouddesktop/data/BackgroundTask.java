@@ -13,6 +13,7 @@ public enum BackgroundTask {
 
 	NONE,
 	LOAD,					// consists of the QUOTA and LIST_FOLDER operation for all cloud storages
+	SYNCHRONIZE,
 	REFRESH,				// consists of the QUOTA and LIST_FOLDER operation
 	BROWSE,					// same as LIST_FOLDER with the exception of custom callback
 	INFO,
@@ -26,6 +27,7 @@ public enum BackgroundTask {
 	RENAME,
 	MOVE,
 	COPY,
+	TRANSFER,				// move or copy file between accounts
 	DELETE,
 	SEARCH,
 	CHECKSUM

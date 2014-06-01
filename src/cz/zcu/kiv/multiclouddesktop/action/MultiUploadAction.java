@@ -76,7 +76,7 @@ public class MultiUploadAction extends CloudAction {
 		case JFileChooser.CANCEL_OPTION:
 		case JFileChooser.ERROR_OPTION:
 		default:
-			parent.getMessageCallback().displayMessage("Upload canceled.");
+			parent.getMessageCallback().displayMessage("Upload cancelled.");
 			return;
 		}
 		/* select clouds */
@@ -91,7 +91,7 @@ public class MultiUploadAction extends CloudAction {
 		case JOptionPane.CANCEL_OPTION:
 		case JOptionPane.CLOSED_OPTION:
 		default:
-			parent.getMessageCallback().displayMessage("Upload canceled.");
+			parent.getMessageCallback().displayMessage("Upload cancelled.");
 			return;
 		}
 		if (accounts == null || accounts.length == 0) {
@@ -130,7 +130,7 @@ public class MultiUploadAction extends CloudAction {
 			case JOptionPane.CANCEL_OPTION:
 			case JOptionPane.CLOSED_OPTION:
 			default:
-				parent.getMessageCallback().displayMessage("Upload canceled.");
+				parent.getMessageCallback().displayMessage("Upload cancelled.");
 				return;
 			}
 		}

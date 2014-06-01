@@ -3,6 +3,7 @@ package cz.zcu.kiv.multiclouddesktop.action;
 import java.awt.event.ActionEvent;
 import java.awt.event.KeyEvent;
 
+import javax.swing.ImageIcon;
 import javax.swing.JOptionPane;
 import javax.swing.KeyStroke;
 
@@ -27,12 +28,17 @@ public class PreferencesAction extends CloudAction {
 	/** Name of the action. */
 	public static final String ACT_NAME = "Preferences";
 
+	/** Folder icon */
+	private final ImageIcon folder;
+
 	/**
 	 * Ctor with necessary parameters.
 	 * @param parent Parent frame.
+	 * @param folder Folder icon.
 	 */
-	public PreferencesAction(MultiCloudDesktop parent) {
+	public PreferencesAction(MultiCloudDesktop parent, ImageIcon folder) {
 		super(parent);
+		this.folder = folder;
 		putValue(NAME, ACT_NAME);
 		putValue(ACCELERATOR_KEY, KeyStroke.getKeyStroke(KeyEvent.VK_P, ActionEvent.CTRL_MASK));
 	}
@@ -43,7 +49,7 @@ public class PreferencesAction extends CloudAction {
 	@Override
 	public void actionPerformed(ActionEvent event) {
 		Preferences prefs = parent.getPreferences();
-		PreferencesDialog dialog = new PreferencesDialog(parent, ACT_NAME, prefs);
+		PreferencesDialog dialog = new PreferencesDialog(parent, ACT_NAME, prefs, folder);
 		dialog.setVisible(true);
 		switch (dialog.getOption()) {
 		case JOptionPane.OK_OPTION:

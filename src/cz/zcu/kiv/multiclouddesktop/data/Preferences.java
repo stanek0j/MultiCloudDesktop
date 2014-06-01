@@ -29,6 +29,8 @@ public class Preferences {
 	public static final boolean DEFAULT_HIDE_METADATA = true;
 	/** Default value for uploading file without overwrite. */
 	public static final boolean DEFAULT_UPLOAD_NO_OVERWRITE = false;
+	/** Default local synchronization folder. */
+	public static final String DEFAULT_SYNC_FOLDER = null;
 	/** Default local folder for listing. */
 	public static final String DEFAULT_FOLDER = ".";
 
@@ -56,6 +58,9 @@ public class Preferences {
 	/** If file should be uploaded without overwrite. */
 	@JsonProperty("upload_no_overwrite")
 	private boolean uploadNoOverwrite;
+	/** Local synchronization folder. */
+	@JsonProperty("sync_folder")
+	private String syncFolder;
 	/** Local folder for listing. */
 	private String folder;
 
@@ -71,6 +76,7 @@ public class Preferences {
 		showChecksumDialog = DEFAULT_SHOW_CHECKSUM_DIALOG;
 		hideMetadata = DEFAULT_HIDE_METADATA;
 		uploadNoOverwrite = DEFAULT_UPLOAD_NO_OVERWRITE;
+		syncFolder = DEFAULT_SYNC_FOLDER;
 		folder = DEFAULT_FOLDER;
 	}
 
@@ -88,6 +94,14 @@ public class Preferences {
 	 */
 	public String getFolder() {
 		return folder;
+	}
+
+	/**
+	 * Returns local synchronization folder.
+	 * @return Local synchronization folder.
+	 */
+	public String getSyncFolder() {
+		return syncFolder;
 	}
 
 	/**
@@ -200,6 +214,14 @@ public class Preferences {
 	 */
 	public void setShowShared(boolean showShared) {
 		this.showShared = showShared;
+	}
+
+	/**
+	 * Sets local synchronization folder.
+	 * @param syncFolder Local synchronization folder.
+	 */
+	public void setSyncFolder(String syncFolder) {
+		this.syncFolder = syncFolder;
 	}
 
 	/**

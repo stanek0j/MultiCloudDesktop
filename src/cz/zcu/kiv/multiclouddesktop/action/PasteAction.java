@@ -9,6 +9,7 @@ import javax.swing.KeyStroke;
 import cz.zcu.kiv.multicloud.json.FileInfo;
 import cz.zcu.kiv.multiclouddesktop.MultiCloudDesktop;
 import cz.zcu.kiv.multiclouddesktop.dialog.PasteDialog;
+import cz.zcu.kiv.multiclouddesktop.dialog.ProgressDialog;
 
 /**
  * cz.zcu.kiv.multiclouddesktop.action/PasteAction.java			<br /><br />
@@ -48,28 +49,49 @@ public class PasteAction extends CloudAction {
 		} else {
 			PasteDialog dialog = new PasteDialog(parent, ACT_NAME, file);
 			dialog.setVisible(true);
-			switch (dialog.getOption()) {
+			FileInfo existing = null;
+			int option = dialog.getOption();
+			switch (option) {
 			case JOptionPane.OK_OPTION:
-				boolean found = false;
 				for (int i = 0; i < parent.getDataList().getModel().getSize(); i++) {
 					FileInfo f = parent.getDataList().getModel().getElementAt(i);
 					if (f.getName().equals(dialog.getFileName())) {
-						found = true;
+						existing = f;
 						break;
 					}
 				}
-				if (found && !dialog.isOverwrite()) {
-					parent.getMessageCallback().displayError("File already exists.");
-				} else {
-					parent.actionPaste(dialog.getFileName());
+				if (existing != null && !dialog.isOverwrite()) {
+					parent.getMessageCallback().displayError("File already exists - overwriting not allowed.");
+					return;
 				}
 				break;
 			case JOptionPane.CANCEL_OPTION:
 			case JOptionPane.CLOSED_OPTION:
 			default:
-				parent.getMessageCallback().displayMessage("Pasting canceled.");
-				break;
+				parent.getMessageCallback().displayMessage("Pasting cancelled.");
+				return;
 			}
+			if (parent.getCurrentAccount().equals(parent.getTransferAccount())) {
+				parent.actionPaste(dialog.getFileName(), null, null);
+			} else {
+				option = JOptionPane.showConfirmDialog(parent, "You are pasting file from a different account.\nDo you want to transfer the file to this account?", ACT_NAME, JOptionPane.YES_NO_OPTION, JOptionPane.QUESTION_MESSAGE);
+				switch (option) {
+				case JOptionPane.YES_OPTION:
+					ProgressDialog progress = new ProgressDialog(parent, parent.getProgressListener().getComponents(), ACT_NAME + " - file transfer");
+					parent.actionPaste(dialog.getFileName(), existing, progress);
+					progress.setVisible(true);
+					if (progress.isAborted()) {
+						parent.actionAbort();
+					}
+					break;
+				case JOptionPane.NO_OPTION:
+				case JOptionPane.CLOSED_OPTION:
+				default:
+					parent.getMessageCallback().displayMessage("Pasting cancelled.");
+					break;
+				}
+			}
+
 		}
 	}
 

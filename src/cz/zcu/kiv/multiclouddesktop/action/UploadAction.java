@@ -88,7 +88,7 @@ public class UploadAction extends CloudAction {
 			case JFileChooser.CANCEL_OPTION:
 			case JFileChooser.ERROR_OPTION:
 			default:
-				parent.getMessageCallback().displayMessage("Upload canceled.");
+				parent.getMessageCallback().displayMessage("Upload cancelled.");
 				break;
 			}
 		}
