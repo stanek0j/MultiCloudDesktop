@@ -2,7 +2,6 @@ package cz.zcu.kiv.multiclouddesktop.dialog;
 
 import java.awt.Dimension;
 import java.awt.FlowLayout;
-import java.awt.Frame;
 import java.awt.Insets;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
@@ -25,7 +24,7 @@ import javax.swing.JTextField;
 import javax.swing.SpinnerNumberModel;
 import javax.swing.border.EmptyBorder;
 
-import cz.zcu.kiv.multiclouddesktop.data.ChecksumProvider;
+import cz.zcu.kiv.multiclouddesktop.MultiCloudDesktop;
 import cz.zcu.kiv.multiclouddesktop.data.ListDisplayType;
 import cz.zcu.kiv.multiclouddesktop.data.Preferences;
 
@@ -47,6 +46,8 @@ public class PreferencesDialog extends JDialog {
 	private final JButton btnCancel;
 	/** Confirmation button. */
 	private final JButton btnOk;
+	/** Button for selecting content synchronization. */
+	private final JButton btnSyncContent;
 	/** Button for choosing local synchronization folder. */
 	private final JButton btnSyncFolder;
 	/** Check box for displaying checksum dialog. */
@@ -69,6 +70,8 @@ public class PreferencesDialog extends JDialog {
 	private final JLabel lblDisplayType;
 	/** Label with description for spinner. */
 	private final JLabel lblThreads;
+	/** Label with description for content synchronization button. */
+	private final JLabel lblSyncContent;
 	/** Label with description for text field. */
 	private final JLabel lblSyncFolder;
 	/** Panel for holding buttons. */
@@ -89,6 +92,8 @@ public class PreferencesDialog extends JDialog {
 	private final JPanel uploadNoOverwritePanel;
 	/** Panel for choosing number of threads per account. */
 	private final JPanel threadsPanel;
+	/** Panel for selecting synchronization content. */
+	private final JPanel syncContentPanel;
 	/** Panel for choosing local synchronization folder. */
 	private final JPanel syncFolderPanel;
 	/** Spinner for selecting number of threads per account. */
@@ -97,24 +102,33 @@ public class PreferencesDialog extends JDialog {
 	private final JTextField txtSyncFolder;
 
 	/** Parent frame. */
-	private final Frame parent;
+	private final MultiCloudDesktop parent;
 	/** Preferences. */
 	private final Preferences prefs;
 	/** Local synchronization folder. */
 	private File syncFolder;
 	/** Return code from the dialog. */
 	private int option;
+	/** Folder icon. */
+	private final ImageIcon folder;
+	/** File icon. */
+	private final ImageIcon file;
 
 	/**
 	 * Ctor with necessary parameters.
 	 * @param parentFrame Parent frame.
 	 * @param title Dialog title.
 	 * @param preferences Preferences to be edited.
+	 * @param icnFolder Folder icon.
+	 * @param icnFile File icon.
 	 */
-	public PreferencesDialog(Frame parentFrame, String title, Preferences preferences, ImageIcon folder) {
+	public PreferencesDialog(MultiCloudDesktop parentFrame, String title, Preferences preferences, ImageIcon icnFolder, ImageIcon icnFile) {
 		this.option = JOptionPane.DEFAULT_OPTION;
 		this.parent = parentFrame;
 		this.prefs = preferences;
+		this.folder = icnFolder;
+		this.file = icnFile;
+
 		chooser = new JFileChooser();
 		chooser.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
 		if (prefs.getSyncFolder() != null) {
@@ -133,6 +147,60 @@ public class PreferencesDialog extends JDialog {
 		displayTypePanel.setBorder(new EmptyBorder(8, 8, 2, 8));
 		displayTypePanel.add(lblDisplayType);
 		displayTypePanel.add(cmbDisplayType);
+
+		lblSyncFolder = new JLabel("Synchronization folder:");
+		lblSyncFolder.setBorder(new EmptyBorder(0, 0, 0, 8));
+		txtSyncFolder = new JTextField();
+		txtSyncFolder.setMargin(new Insets(2, 4, 2, 4));
+		btnSyncFolder = new JButton(folder);
+		btnSyncFolder.setMargin(new Insets(0, 4, 0, 4));
+		btnSyncFolder.addActionListener(new ActionListener() {
+			/**
+			 * {@inheritDoc}
+			 */
+			@Override
+			public void actionPerformed(ActionEvent event) {
+				if (syncFolder != null) {
+					chooser.setCurrentDirectory(syncFolder);
+				}
+				int option = chooser.showOpenDialog(parent);
+				switch (option) {
+				case JFileChooser.APPROVE_OPTION:
+					syncFolder = chooser.getSelectedFile();
+					txtSyncFolder.setText(syncFolder.getPath());
+					break;
+				case JFileChooser.CANCEL_OPTION:
+				case JFileChooser.ERROR_OPTION:
+				default:
+					break;
+				}
+			}
+		});
+		txtSyncFolder.setPreferredSize(new Dimension(400 - btnSyncFolder.getPreferredSize().width, btnSyncFolder.getPreferredSize().height - 2));
+		syncFolderPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
+		syncFolderPanel.setBorder(new EmptyBorder(2, 8, 2, 8));
+		syncFolderPanel.add(lblSyncFolder);
+		syncFolderPanel.add(txtSyncFolder);
+		syncFolderPanel.add(btnSyncFolder);
+
+		lblSyncContent = new JLabel("Content selection:");
+		lblSyncContent.setBorder(new EmptyBorder(0, 0, 0, 8));
+		btnSyncContent = new JButton("Select synchronization content");
+		btnSyncContent.setMargin(new Insets(4, 20, 4, 20));
+		btnSyncContent.addActionListener(new ActionListener() {
+			/**
+			 * {@inheritDoc}
+			 */
+			@Override
+			public void actionPerformed(ActionEvent event) {
+				SynchronizeDialog dialog = new SynchronizeDialog(parent, "Synchronization content", folder, file);
+				dialog.setVisible(true);
+			}
+		});
+		syncContentPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
+		syncContentPanel.setBorder(new EmptyBorder(2, 8, 2, 8));
+		syncContentPanel.add(lblSyncContent);
+		syncContentPanel.add(btnSyncContent);
 
 		lblThreads = new JLabel("Threads per account:");
 		lblThreads.setBorder(new EmptyBorder(0, 0, 0, 8));
@@ -171,7 +239,7 @@ public class PreferencesDialog extends JDialog {
 		showChecksumDialogPanel.add(lblSpaceChecksumDialog);
 		showChecksumDialogPanel.add(chckShowChecksumDialog);
 
-		chckHideMetadata = new JCheckBox("Hide metadata file '" + ChecksumProvider.CHECKSUM_FILE + "' from file list.");
+		chckHideMetadata = new JCheckBox("Hide metadata files from file list.");
 		hideMetadataPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
 		hideMetadataPanel.setBorder(new EmptyBorder(2, 8, 2, 8));
 		JLabel lblSpaceHideMetadata = new JLabel();
@@ -185,41 +253,12 @@ public class PreferencesDialog extends JDialog {
 		uploadNoOverwritePanel.add(lblSpaceUpload);
 		uploadNoOverwritePanel.add(chckUploadNoOverwrite);
 
-		lblSyncFolder = new JLabel("Synchronization folder:");
-		lblSyncFolder.setBorder(new EmptyBorder(0, 0, 0, 8));
-		txtSyncFolder = new JTextField();
-		txtSyncFolder.setMargin(new Insets(5, 5, 4, 5));
-		btnSyncFolder = new JButton(folder);
-		btnSyncFolder.setMargin(new Insets(0, 4, 0, 4));
-		btnSyncFolder.addActionListener(new ActionListener() {
-			/**
-			 * {@inheritDoc}
-			 */
-			@Override
-			public void actionPerformed(ActionEvent event) {
-				int option = chooser.showOpenDialog(parent);
-				switch (option) {
-				case JFileChooser.APPROVE_OPTION:
-					syncFolder = chooser.getSelectedFile();
-					txtSyncFolder.setText(syncFolder.getPath());
-					break;
-				case JFileChooser.CANCEL_OPTION:
-				case JFileChooser.ERROR_OPTION:
-				default:
-					break;
-				}
-			}
-		});
-		txtSyncFolder.setPreferredSize(new Dimension(400 - btnSyncFolder.getPreferredSize().width, txtSyncFolder.getPreferredSize().height));
-		syncFolderPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
-		syncFolderPanel.setBorder(new EmptyBorder(8, 8, 2, 8));
-		syncFolderPanel.add(lblSyncFolder);
-		syncFolderPanel.add(txtSyncFolder);
-		syncFolderPanel.add(btnSyncFolder);
-
 		int labelWidth = (lblDisplayType.getPreferredSize().width > lblThreads.getPreferredSize().width) ? lblDisplayType.getPreferredSize().width : lblThreads.getPreferredSize().width;
 		labelWidth = (lblSyncFolder.getPreferredSize().width > labelWidth) ? lblSyncFolder.getPreferredSize().width : labelWidth;
+		labelWidth = (lblSyncContent.getPreferredSize().width > labelWidth) ? lblSyncContent.getPreferredSize().width : labelWidth;
 		lblDisplayType.setPreferredSize(new Dimension(labelWidth, lblDisplayType.getPreferredSize().height));
+		lblSyncFolder.setPreferredSize(new Dimension(labelWidth, lblSyncFolder.getPreferredSize().height));
+		lblSyncContent.setPreferredSize(new Dimension(labelWidth, lblSyncContent.getPreferredSize().height));
 		lblThreads.setPreferredSize(new Dimension(labelWidth, lblThreads.getPreferredSize().height));
 		lblSpaceDeleted.setPreferredSize(new Dimension(labelWidth, lblSpaceDeleted.getPreferredSize().height));
 		lblSpaceShared.setPreferredSize(new Dimension(labelWidth, lblSpaceShared.getPreferredSize().height));
@@ -275,6 +314,8 @@ public class PreferencesDialog extends JDialog {
 		});
 
 		add(displayTypePanel);
+		add(syncFolderPanel);
+		add(syncContentPanel);
 		add(threadsPanel);
 		add(showDeletedPanel);
 		add(showSharedPanel);
@@ -282,7 +323,6 @@ public class PreferencesDialog extends JDialog {
 		add(showChecksumDialogPanel);
 		add(hideMetadataPanel);
 		add(uploadNoOverwritePanel);
-		add(syncFolderPanel);
 		add(buttonPanel);
 
 		cmbDisplayType.setSelectedItem(prefs.getDisplayType().getText());

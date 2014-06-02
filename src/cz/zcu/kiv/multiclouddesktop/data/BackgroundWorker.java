@@ -19,6 +19,9 @@ import cz.zcu.kiv.multicloud.json.Json;
 import cz.zcu.kiv.multicloud.json.ParentInfo;
 import cz.zcu.kiv.multicloud.oauth2.OAuth2SettingsException;
 import cz.zcu.kiv.multiclouddesktop.MultiCloudDesktop;
+import cz.zcu.kiv.multiclouddesktop.callback.BackgroundCallback;
+import cz.zcu.kiv.multiclouddesktop.callback.BrowseCallback;
+import cz.zcu.kiv.multiclouddesktop.callback.SearchCallback;
 import cz.zcu.kiv.multiclouddesktop.dialog.ProgressDialog;
 
 /**
@@ -481,15 +484,17 @@ public class BackgroundWorker extends Thread {
 	/**
 	 * Preparing task for refreshing account data.
 	 * @param accountName Account name.
+	 * @param accountNames Account names.
 	 * @param folder Current folder.
 	 * @return If the task was initialized.
 	 */
-	public boolean refresh(String accountName, FileInfo folder) {
+	public boolean refresh(String accountName, String[] accountNames, FileInfo folder) {
 		boolean ready = false;
 		synchronized (this) {
 			if (task == BackgroundTask.NONE) {
 				task = BackgroundTask.REFRESH;
 				account = accountName;
+				accounts = accountNames;
 				src = folder;
 				ready = true;
 				notifyAll();
@@ -656,8 +661,10 @@ public class BackgroundWorker extends Thread {
 				break;
 			case REFRESH:
 				try {
-					AccountInfo info = cloud.accountInfo(account);
-					cache.addAccount(account, info.getId());
+					for (int i = 0; i < accounts.length; i++) {
+						AccountInfo info = cloud.accountInfo(accounts[i]);
+						cache.addAccount(accounts[i], info.getId());
+					}
 					AccountQuota quota = cloud.accountQuota(account);
 					if (quotaCallback != null) {
 						quotaCallback.onFinish(task, account, quota);

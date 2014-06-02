@@ -1,4 +1,4 @@
-package cz.zcu.kiv.multiclouddesktop.data;
+package cz.zcu.kiv.multiclouddesktop.renderer;
 
 import java.awt.Component;
 import java.awt.Font;
@@ -10,8 +10,10 @@ import javax.swing.JPanel;
 import javax.swing.ListCellRenderer;
 import javax.swing.border.EmptyBorder;
 
+import cz.zcu.kiv.multiclouddesktop.data.AccountData;
+
 /**
- * cz.zcu.kiv.multiclouddesktop.data/CloudDialogListCellRenderer.java			<br /><br />
+ * cz.zcu.kiv.multiclouddesktop.renderer/CloudDialogListCellRenderer.java			<br /><br />
  *
  * Cell renderer for account list used in the {@link cz.zcu.kiv.multiclouddesktop.dialog.CloudDialog}.
  *

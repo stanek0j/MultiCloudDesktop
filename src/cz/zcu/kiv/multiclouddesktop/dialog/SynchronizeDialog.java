@@ -2,9 +2,6 @@ package cz.zcu.kiv.multiclouddesktop.dialog;
 
 import java.awt.BorderLayout;
 import java.awt.Dimension;
-import java.awt.FlowLayout;
-import java.awt.Font;
-import java.awt.Frame;
 import java.awt.Insets;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
@@ -13,6 +10,7 @@ import java.awt.event.WindowEvent;
 
 import javax.swing.BoxLayout;
 import javax.swing.DefaultListModel;
+import javax.swing.ImageIcon;
 import javax.swing.JButton;
 import javax.swing.JDialog;
 import javax.swing.JLabel;
@@ -20,28 +18,19 @@ import javax.swing.JList;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
+import javax.swing.JTree;
 import javax.swing.ListSelectionModel;
 import javax.swing.ScrollPaneConstants;
 import javax.swing.border.EmptyBorder;
 
 import cz.zcu.kiv.multicloud.json.AccountSettings;
-import cz.zcu.kiv.multicloud.utils.AccountManager;
+import cz.zcu.kiv.multiclouddesktop.MultiCloudDesktop;
 import cz.zcu.kiv.multiclouddesktop.data.AccountData;
-import cz.zcu.kiv.multiclouddesktop.renderer.CloudDialogListCellRenderer;
 
-/**
- * cz.zcu.kiv.multiclouddesktop.dialog/CloudDialog.java			<br /><br />
- *
- * Dialog for selecting multiple user accounts.
- *
- * @author Jaromír Staněk
- * @version 1.0
- *
- */
-public class CloudDialog extends JDialog {
+public class SynchronizeDialog extends JDialog {
 
 	/** Serialization constant. */
-	private static final long serialVersionUID = 6763785773295846295L;
+	private static final long serialVersionUID = 7009880397181595733L;
 
 	/** Cancel button. */
 	private final JButton btnCancel;
@@ -49,36 +38,51 @@ public class CloudDialog extends JDialog {
 	private final JButton btnOk;
 	/** List with user accounts. */
 	private final JList<AccountData> accountList;
-	/** Label with description for the account list. */
+	/** Label with description for combo box. */
 	private final JLabel lblAccount;
-	/** Label with message for the user. */
-	private final JLabel lblMessage;
+	/** Label for list of results. */
+	private final JLabel lblBrowse;
+	/** Panel for choosing account. */
+	private final JPanel accountPanel;
 	/** Panel for holding buttons. */
 	private final JPanel buttonPanel;
-	/** Panel for choosing cloud storage service providers. */
-	private final JPanel accountPanel;
-	/** Panel for user message. */
-	private final JPanel messagePanel;
+	/** Panel for displaying local folder. */
+	private final JPanel browsePanel;
+	/** Panel for displaying local folder and account panels. */
+	private final JPanel commonPanel;
+	/** Tree for showing local folder structure. */
+	private final JTree browseTree;
 
+	/** Parent frame. */
+	private final MultiCloudDesktop parent;
 	/** Return code from the dialog. */
 	private int option;
 
 	/**
 	 * Ctor with necessary parameters.
-	 * @param parent Parent frame.
+	 * @param parentFrame Parent frame.
 	 * @param title Dialog title.
-	 * @param accountManager Account manager.
-	 * @param message Message for the user.
+	 * @param icnFolder Folder icon.
+	 * @param icnFile File icon.
 	 */
-	public CloudDialog(Frame parent, String title, AccountManager accountManager, String message) {
-		this.option = JOptionPane.DEFAULT_OPTION;
+	public SynchronizeDialog(MultiCloudDesktop parentFrame, String title, ImageIcon folder, ImageIcon file) {
+		parent = parentFrame;
+
+		lblBrowse = new JLabel("Local folder:");
+		lblBrowse.setBorder(new EmptyBorder(2, 2, 2, 2));
+		browseTree = new JTree();
+		JScrollPane browsePane = new JScrollPane();
+		browsePane.setPreferredSize(new Dimension(200, 200));
+		browsePane.setViewportView(browseTree);
+		browsePanel = new JPanel();
+		browsePanel.setLayout(new BoxLayout(browsePanel, BoxLayout.PAGE_AXIS));
+		browsePanel.add(lblBrowse);
+		browsePanel.add(browsePane);
 
 		lblAccount = new JLabel("Accounts:");
-		lblAccount.setBorder(new EmptyBorder(2, 0, 0, 8));
-		lblAccount.setVerticalAlignment(JLabel.TOP);
-		CloudDialogListCellRenderer renderer = new CloudDialogListCellRenderer(new Font(lblAccount.getFont().getFontName(), Font.BOLD, lblAccount.getFont().getSize()), lblAccount.getFont());
+		lblAccount.setBorder(new EmptyBorder(2, 2, 2, 2));
 		DefaultListModel<AccountData> model = new DefaultListModel<>();
-		for (AccountSettings account: accountManager.getAllAccountSettings()) {
+		for (AccountSettings account: parent.getAccountManager().getAllAccountSettings()) {
 			if (account.isAuthorized()) {
 				AccountData data = new AccountData();
 				data.setName(account.getAccountId());
@@ -88,25 +92,24 @@ public class CloudDialog extends JDialog {
 		}
 		accountList = new JList<>();
 		accountList.setVisibleRowCount(-1);
-		accountList.setCellRenderer(renderer);
+		//accountList.setCellRenderer(renderer);
 		accountList.setModel(model);
 		accountList.setSelectionMode(ListSelectionModel.MULTIPLE_INTERVAL_SELECTION);
 		accountList.setSelectionInterval(0, model.getSize() - 1);
 		JScrollPane accountPane = new JScrollPane();
-		accountPane.setPreferredSize(new Dimension(300, 180));
+		accountPane.setPreferredSize(new Dimension(150, 200));
 		accountPane.setVerticalScrollBarPolicy(ScrollPaneConstants.VERTICAL_SCROLLBAR_ALWAYS);
 		accountPane.setViewportView(accountList);
-		JLabel lblEmpty = new JLabel();
-		lblEmpty.setPreferredSize(lblAccount.getPreferredSize());
-		lblMessage = new JLabel(message);
-		accountPanel = new JPanel(new BorderLayout());
-		accountPanel.setBorder(new EmptyBorder(8, 8, 0, 8));
-		accountPanel.add(lblAccount, BorderLayout.WEST);
-		accountPanel.add(accountPane, BorderLayout.CENTER);
-		messagePanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
-		messagePanel.setBorder(new EmptyBorder(2, 8, 2, 8));
-		messagePanel.add(lblEmpty);
-		messagePanel.add(lblMessage);
+		accountPanel = new JPanel();
+		accountPanel.setLayout(new BoxLayout(accountPanel, BoxLayout.PAGE_AXIS));
+		accountPanel.add(lblAccount);
+		accountPanel.add(accountPane);
+
+		commonPanel = new JPanel(new BorderLayout(4, 0));
+		commonPanel.setBorder(new EmptyBorder(4, 4, 2, 4));
+		commonPanel.add(browsePanel, BorderLayout.CENTER);
+		commonPanel.add(accountPanel, BorderLayout.EAST);
+
 		btnOk = new JButton("OK");
 		btnOk.setMargin(new Insets(4, 20, 4, 20));
 		btnOk.addActionListener(new ActionListener() {
@@ -132,7 +135,7 @@ public class CloudDialog extends JDialog {
 			}
 		});
 		buttonPanel = new JPanel();
-		buttonPanel.setBorder(new EmptyBorder(0, 0, 4, 0));
+		buttonPanel.setBorder(new EmptyBorder(2, 0, 4, 0));
 		buttonPanel.add(btnOk);
 		buttonPanel.add(btnCancel);
 
@@ -151,33 +154,11 @@ public class CloudDialog extends JDialog {
 			}
 		});
 
-		add(accountPanel);
-		add(messagePanel);
+		add(commonPanel);
 		add(buttonPanel);
 		pack();
-		setLocationRelativeTo(parent);
+		setLocationRelativeTo(parentFrame);
 		setModalityType(ModalityType.APPLICATION_MODAL);
-	}
-
-	/**
-	 * Returns the return code from the dialog.
-	 * @return Return code from the dialog.
-	 */
-	public int getOption() {
-		return option;
-	}
-
-	/**
-	 * Returns the selected accounts.
-	 * @return Selected accounts.
-	 */
-	public AccountData[] getSelectedAccounts() {
-		int[] indices = accountList.getSelectedIndices();
-		AccountData[] selected = new AccountData[indices.length];
-		for (int i = 0; i < indices.length; i++) {
-			selected[i] = accountList.getModel().getElementAt(indices[i]);
-		}
-		return selected;
 	}
 
 }

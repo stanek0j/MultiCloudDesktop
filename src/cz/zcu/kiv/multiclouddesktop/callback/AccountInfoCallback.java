@@ -1,4 +1,4 @@
-package cz.zcu.kiv.multiclouddesktop.data;
+package cz.zcu.kiv.multiclouddesktop.callback;
 
 import java.awt.Dimension;
 import java.awt.FlowLayout;
@@ -11,9 +11,10 @@ import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 
 import cz.zcu.kiv.multicloud.json.AccountInfo;
+import cz.zcu.kiv.multiclouddesktop.data.BackgroundTask;
 
 /**
- * cz.zcu.kiv.multiclouddesktop.data/AccountInfoCallback.java			<br /><br />
+ * cz.zcu.kiv.multiclouddesktop.callback/AccountInfoCallback.java			<br /><br />
  *
  * Callback for displaying information about user account.
  *

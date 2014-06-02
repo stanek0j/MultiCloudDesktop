@@ -1,7 +1,9 @@
-package cz.zcu.kiv.multiclouddesktop.data;
+package cz.zcu.kiv.multiclouddesktop.callback;
+
+import cz.zcu.kiv.multiclouddesktop.data.BackgroundTask;
 
 /**
- * cz.zcu.kiv.multiclouddesktop.data/BackgroundCallback.java			<br /><br />
+ * cz.zcu.kiv.multiclouddesktop.callback/BackgroundCallback.java			<br /><br />
  *
  * Interface for returning values from {@link cz.zcu.kiv.multiclouddesktop.data.BackgroundWorker} after the desired work is done.
  *

@@ -30,15 +30,19 @@ public class PreferencesAction extends CloudAction {
 
 	/** Folder icon */
 	private final ImageIcon folder;
+	/** File icon. */
+	private final ImageIcon file;
 
 	/**
 	 * Ctor with necessary parameters.
 	 * @param parent Parent frame.
 	 * @param folder Folder icon.
+	 * @param file File icon.
 	 */
-	public PreferencesAction(MultiCloudDesktop parent, ImageIcon folder) {
+	public PreferencesAction(MultiCloudDesktop parent, ImageIcon folder, ImageIcon file) {
 		super(parent);
 		this.folder = folder;
+		this.file = file;
 		putValue(NAME, ACT_NAME);
 		putValue(ACCELERATOR_KEY, KeyStroke.getKeyStroke(KeyEvent.VK_P, ActionEvent.CTRL_MASK));
 	}
@@ -49,7 +53,7 @@ public class PreferencesAction extends CloudAction {
 	@Override
 	public void actionPerformed(ActionEvent event) {
 		Preferences prefs = parent.getPreferences();
-		PreferencesDialog dialog = new PreferencesDialog(parent, ACT_NAME, prefs, folder);
+		PreferencesDialog dialog = new PreferencesDialog(parent, ACT_NAME, prefs, folder, file);
 		dialog.setVisible(true);
 		switch (dialog.getOption()) {
 		case JOptionPane.OK_OPTION:

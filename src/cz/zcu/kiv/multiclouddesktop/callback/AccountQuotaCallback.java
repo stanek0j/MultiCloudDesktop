@@ -1,4 +1,4 @@
-package cz.zcu.kiv.multiclouddesktop.data;
+package cz.zcu.kiv.multiclouddesktop.callback;
 
 import java.awt.Dimension;
 import java.awt.FlowLayout;
@@ -14,9 +14,11 @@ import javax.swing.JPanel;
 import cz.zcu.kiv.multicloud.json.AccountQuota;
 import cz.zcu.kiv.multicloud.utils.Utils;
 import cz.zcu.kiv.multicloud.utils.Utils.UnitsFormat;
+import cz.zcu.kiv.multiclouddesktop.data.AccountData;
+import cz.zcu.kiv.multiclouddesktop.data.BackgroundTask;
 
 /**
- * cz.zcu.kiv.multiclouddesktop.data/AccountQuotaCallback.java			<br /><br />
+ * cz.zcu.kiv.multiclouddesktop.callback/AccountQuotaCallback.java			<br /><br />
  *
  * Callback for displaying user account quota.
  *

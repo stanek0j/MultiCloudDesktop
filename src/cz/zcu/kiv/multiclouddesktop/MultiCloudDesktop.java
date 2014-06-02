@@ -84,22 +84,22 @@ import cz.zcu.kiv.multiclouddesktop.action.RenameAction;
 import cz.zcu.kiv.multiclouddesktop.action.SynchronizeAction;
 import cz.zcu.kiv.multiclouddesktop.action.TransferType;
 import cz.zcu.kiv.multiclouddesktop.action.UploadAction;
+import cz.zcu.kiv.multiclouddesktop.callback.AccountInfoCallback;
+import cz.zcu.kiv.multiclouddesktop.callback.AccountQuotaCallback;
+import cz.zcu.kiv.multiclouddesktop.callback.BrowseCallback;
+import cz.zcu.kiv.multiclouddesktop.callback.FileInfoCallback;
+import cz.zcu.kiv.multiclouddesktop.callback.MessageCallback;
+import cz.zcu.kiv.multiclouddesktop.callback.SearchCallback;
 import cz.zcu.kiv.multiclouddesktop.data.AccountData;
-import cz.zcu.kiv.multiclouddesktop.data.AccountDataListCellRenderer;
-import cz.zcu.kiv.multiclouddesktop.data.AccountInfoCallback;
-import cz.zcu.kiv.multiclouddesktop.data.AccountQuotaCallback;
 import cz.zcu.kiv.multiclouddesktop.data.BackgroundTask;
 import cz.zcu.kiv.multiclouddesktop.data.BackgroundWorker;
-import cz.zcu.kiv.multiclouddesktop.data.BrowseCallback;
 import cz.zcu.kiv.multiclouddesktop.data.ChecksumProvider;
-import cz.zcu.kiv.multiclouddesktop.data.FileInfoCallback;
-import cz.zcu.kiv.multiclouddesktop.data.FileInfoListCellRenderer;
-import cz.zcu.kiv.multiclouddesktop.data.MessageCallback;
 import cz.zcu.kiv.multiclouddesktop.data.Preferences;
-import cz.zcu.kiv.multiclouddesktop.data.SearchCallback;
 import cz.zcu.kiv.multiclouddesktop.dialog.AuthorizeDialog;
 import cz.zcu.kiv.multiclouddesktop.dialog.DialogProgressListener;
 import cz.zcu.kiv.multiclouddesktop.dialog.ProgressDialog;
+import cz.zcu.kiv.multiclouddesktop.renderer.AccountDataListCellRenderer;
+import cz.zcu.kiv.multiclouddesktop.renderer.FileInfoListCellRenderer;
 
 /**
  * cz.zcu.kiv.multiclouddesktop/MultiCloudDesktop.java			<br /><br />
@@ -657,7 +657,7 @@ public class MultiCloudDesktop extends JFrame {
 
 		/* shared actions */
 		actSynchronize = new SynchronizeAction(this);
-		actPreferences = new PreferencesAction(this, icnFolderSmall);
+		actPreferences = new PreferencesAction(this, icnFolderSmall, icnFileSmall);
 		actExit = new ExitAction(this);
 
 		actAddAccount = new AddAccountAction(this);
@@ -971,7 +971,11 @@ public class MultiCloudDesktop extends JFrame {
 			if (!dialog.isFailed()) {
 				messageCallback.displayMessage("Account authorized.");
 				account.setAuthorized(true);
-				worker.refresh(account.getName(), null);
+				String[] accounts = new String[accountModel.getSize()];
+				for (int i = 0; i < accountModel.getSize(); i++) {
+					accounts[i] = accountModel.get(i).getName();
+				}
+				worker.refresh(account.getName(), accounts, null);
 			}
 		}
 	}
@@ -1210,7 +1214,11 @@ public class MultiCloudDesktop extends JFrame {
 				currentPath.clear();
 			}
 		}
-		worker.refresh(accountName, currentFolder);
+		String[] accounts = new String[accountModel.getSize()];
+		for (int i = 0; i < accountModel.getSize(); i++) {
+			accounts[i] = accountModel.get(i).getName();
+		}
+		worker.refresh(accountName, accounts, currentFolder);
 	}
 
 	/**

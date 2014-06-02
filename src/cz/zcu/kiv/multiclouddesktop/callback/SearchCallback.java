@@ -1,14 +1,15 @@
-package cz.zcu.kiv.multiclouddesktop.data;
+package cz.zcu.kiv.multiclouddesktop.callback;
 
 import java.util.List;
 
 import javax.swing.DefaultListModel;
 
 import cz.zcu.kiv.multicloud.json.FileInfo;
+import cz.zcu.kiv.multiclouddesktop.data.BackgroundTask;
 import cz.zcu.kiv.multiclouddesktop.dialog.SearchDialog;
 
 /**
- * cz.zcu.kiv.multiclouddesktop.data/SearchCallback.java			<br /><br />
+ * cz.zcu.kiv.multiclouddesktop.callback/SearchCallback.java			<br /><br />
  *
  * Callback for displaying the results of the search.
  *

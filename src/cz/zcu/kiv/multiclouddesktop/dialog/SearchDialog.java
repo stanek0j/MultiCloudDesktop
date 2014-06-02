@@ -33,9 +33,9 @@ import javax.swing.event.ListSelectionListener;
 import cz.zcu.kiv.multicloud.json.AccountSettings;
 import cz.zcu.kiv.multicloud.json.FileInfo;
 import cz.zcu.kiv.multiclouddesktop.MultiCloudDesktop;
+import cz.zcu.kiv.multiclouddesktop.callback.SearchCallback;
 import cz.zcu.kiv.multiclouddesktop.data.AccountData;
-import cz.zcu.kiv.multiclouddesktop.data.SearchCallback;
-import cz.zcu.kiv.multiclouddesktop.data.SearchDialogListCellRenderer;
+import cz.zcu.kiv.multiclouddesktop.renderer.SearchDialogListCellRenderer;
 
 /**
  * cz.zcu.kiv.multiclouddesktop.dialog/SearchDialog.java			<br /><br />

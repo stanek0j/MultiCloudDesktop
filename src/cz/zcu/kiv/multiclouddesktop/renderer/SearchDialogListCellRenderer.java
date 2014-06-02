@@ -1,4 +1,4 @@
-package cz.zcu.kiv.multiclouddesktop.data;
+package cz.zcu.kiv.multiclouddesktop.renderer;
 
 import java.awt.Component;
 import java.awt.FlowLayout;
@@ -14,7 +14,7 @@ import cz.zcu.kiv.multicloud.filesystem.FileType;
 import cz.zcu.kiv.multicloud.json.FileInfo;
 
 /**
- * cz.zcu.kiv.multiclouddesktop.data/SearchDialogListCellRenderer.java			<br /><br />
+ * cz.zcu.kiv.multiclouddesktop.renderer/SearchDialogListCellRenderer.java			<br /><br />
  *
  * Cell renderer for file list used in the {@link cz.zcu.kiv.multiclouddesktop.dialog.SearchDialog}.
  *

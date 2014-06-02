@@ -38,9 +38,9 @@ import cz.zcu.kiv.multicloud.json.AccountSettings;
 import cz.zcu.kiv.multicloud.json.FileInfo;
 import cz.zcu.kiv.multicloud.utils.Utils;
 import cz.zcu.kiv.multiclouddesktop.MultiCloudDesktop;
+import cz.zcu.kiv.multiclouddesktop.callback.BrowseCallback;
 import cz.zcu.kiv.multiclouddesktop.data.AccountData;
-import cz.zcu.kiv.multiclouddesktop.data.BrowseCallback;
-import cz.zcu.kiv.multiclouddesktop.data.SearchDialogListCellRenderer;
+import cz.zcu.kiv.multiclouddesktop.renderer.SearchDialogListCellRenderer;
 
 /**
  * cz.zcu.kiv.multiclouddesktop.dialog/BrowseDialog.java			<br /><br />
@@ -436,6 +436,14 @@ public class BrowseDialog extends JDialog {
 			parent.setShared(p.isShared());
 			parent.setSize(p.getSize());
 		}
+		return parent;
+	}
+
+	/**
+	 * Returns the parent frame.
+	 * @return Parent frame.
+	 */
+	public MultiCloudDesktop getParentFrame() {
 		return parent;
 	}
 

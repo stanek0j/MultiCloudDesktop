@@ -1,4 +1,4 @@
-package cz.zcu.kiv.multiclouddesktop.data;
+package cz.zcu.kiv.multiclouddesktop.callback;
 
 import javax.swing.DefaultListModel;
 import javax.swing.JList;
@@ -6,9 +6,12 @@ import javax.swing.JList;
 import cz.zcu.kiv.multicloud.filesystem.FileType;
 import cz.zcu.kiv.multicloud.json.FileInfo;
 import cz.zcu.kiv.multiclouddesktop.MultiCloudDesktop;
+import cz.zcu.kiv.multiclouddesktop.data.AccountData;
+import cz.zcu.kiv.multiclouddesktop.data.BackgroundTask;
+import cz.zcu.kiv.multiclouddesktop.data.ChecksumProvider;
 
 /**
- * cz.zcu.kiv.multiclouddesktop.data/FileInfoCallback.java			<br /><br />
+ * cz.zcu.kiv.multiclouddesktop.callback/FileInfoCallback.java			<br /><br />
  *
  * Callback for displaying the contents of a folder.
  *

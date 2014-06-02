@@ -1,4 +1,4 @@
-package cz.zcu.kiv.multiclouddesktop.data;
+package cz.zcu.kiv.multiclouddesktop.renderer;
 
 import java.awt.BorderLayout;
 import java.awt.Component;
@@ -16,7 +16,7 @@ import cz.zcu.kiv.multicloud.filesystem.FileType;
 import cz.zcu.kiv.multicloud.json.FileInfo;
 
 /**
- * cz.zcu.kiv.multiclouddesktop.data/FileInfoListCellRenderer.java			<br /><br />
+ * cz.zcu.kiv.multiclouddesktop.renderer/FileInfoListCellRenderer.java			<br /><br />
  *
  * Cell renderer for displaying {@link cz.zcu.kiv.multicloud.json.FileInfo} in {@link javax.swing.JList}.
  *

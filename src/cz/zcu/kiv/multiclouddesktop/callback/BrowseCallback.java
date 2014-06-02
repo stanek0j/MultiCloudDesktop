@@ -1,14 +1,16 @@
-package cz.zcu.kiv.multiclouddesktop.data;
+package cz.zcu.kiv.multiclouddesktop.callback;
 
 import javax.swing.DefaultListModel;
 import javax.swing.JList;
 
 import cz.zcu.kiv.multicloud.filesystem.FileType;
 import cz.zcu.kiv.multicloud.json.FileInfo;
+import cz.zcu.kiv.multiclouddesktop.data.BackgroundTask;
+import cz.zcu.kiv.multiclouddesktop.data.ChecksumProvider;
 import cz.zcu.kiv.multiclouddesktop.dialog.BrowseDialog;
 
 /**
- * cz.zcu.kiv.multiclouddesktop.data/BrowseCallback.java			<br /><br />
+ * cz.zcu.kiv.multiclouddesktop.callback/BrowseCallback.java			<br /><br />
  *
  * Callback for displaying the contents of a folder.
  *
@@ -56,6 +58,9 @@ public class BrowseCallback implements BackgroundCallback<FileInfo> {
 			}
 			for (FileInfo f: result.getContent()) {
 				if (f.getFileType() == FileType.FILE) {
+					if (parent.getParentFrame().getPreferences().isHideMetadata() && f.getName().equals(ChecksumProvider.CHECKSUM_FILE)) {
+						continue;
+					}
 					model.addElement(f);
 				}
 			}

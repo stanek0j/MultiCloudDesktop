@@ -1,4 +1,4 @@
-package cz.zcu.kiv.multiclouddesktop.data;
+package cz.zcu.kiv.multiclouddesktop.renderer;
 
 import java.awt.Component;
 import java.awt.Font;
@@ -12,9 +12,10 @@ import javax.swing.border.EmptyBorder;
 
 import cz.zcu.kiv.multicloud.utils.Utils;
 import cz.zcu.kiv.multicloud.utils.Utils.UnitsFormat;
+import cz.zcu.kiv.multiclouddesktop.data.AccountData;
 
 /**
- * cz.zcu.kiv.multiclouddesktop.data/AccountDataListCellRenderer.java			<br /><br />
+ * cz.zcu.kiv.multiclouddesktop.renderer/AccountDataListCellRenderer.java			<br /><br />
  *
  * Cell renderer for displaying {@link cz.zcu.kiv.multiclouddesktop.data.AccountData} in {@link javax.swing.JList}.
  *

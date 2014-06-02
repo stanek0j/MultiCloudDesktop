@@ -1,4 +1,4 @@
-package cz.zcu.kiv.multiclouddesktop.data;
+package cz.zcu.kiv.multiclouddesktop.callback;
 
 import java.awt.Color;
 import java.awt.Frame;
@@ -6,8 +6,10 @@ import java.awt.Frame;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 
+import cz.zcu.kiv.multiclouddesktop.data.BackgroundTask;
+
 /**
- * cz.zcu.kiv.multiclouddesktop.data/MessageCallback.java			<br /><br />
+ * cz.zcu.kiv.multiclouddesktop.callback/MessageCallback.java			<br /><br />
  *
  * Callback for displaying status in a {@link javax.swing.JLabel}.
  *
