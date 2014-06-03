@@ -286,8 +286,8 @@ public class BrowseDialog extends JDialog {
 			 * {@inheritDoc}
 			 */
 			@Override
-			public void windowClosing(WindowEvent e) {
-				super.windowClosing(e);
+			public void windowClosing(WindowEvent event) {
+				super.windowClosing(event);
 				option = JOptionPane.CLOSED_OPTION;
 			}
 		});

@@ -1,7 +1,7 @@
-package cz.zcu.kiv.multiclouddesktop.action;
+package cz.zcu.kiv.multiclouddesktop.data;
 
 /**
- * cz.zcu.kiv.multiclouddesktop.action/TransferType.java			<br /><br />
+ * cz.zcu.kiv.multiclouddesktop.data/TransferType.java			<br /><br />
  *
  * List of all possible types of file transfer between two locations.
  *

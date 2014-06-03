@@ -63,6 +63,9 @@ public class Preferences {
 	private String syncFolder;
 	/** Local folder for listing. */
 	private String folder;
+	/** Synchronization data. */
+	@JsonProperty("sync_data")
+	private SyncData syncData;
 
 	/**
 	 * Empty ctor for filling in default values.
@@ -78,6 +81,7 @@ public class Preferences {
 		uploadNoOverwrite = DEFAULT_UPLOAD_NO_OVERWRITE;
 		syncFolder = DEFAULT_SYNC_FOLDER;
 		folder = DEFAULT_FOLDER;
+		syncData = null;
 	}
 
 	/**
@@ -94,6 +98,14 @@ public class Preferences {
 	 */
 	public String getFolder() {
 		return folder;
+	}
+
+	/**
+	 * Returns the synchronization data.
+	 * @return Synchronization data.
+	 */
+	public SyncData getSyncData() {
+		return syncData;
 	}
 
 	/**
@@ -214,6 +226,14 @@ public class Preferences {
 	 */
 	public void setShowShared(boolean showShared) {
 		this.showShared = showShared;
+	}
+
+	/**
+	 * Sets the synchronization data.
+	 * @param syncData Synchronization data.
+	 */
+	public void setSyncData(SyncData syncData) {
+		this.syncData = syncData;
 	}
 
 	/**
