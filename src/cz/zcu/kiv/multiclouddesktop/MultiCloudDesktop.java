@@ -8,7 +8,6 @@ import java.awt.Font;
 import java.awt.FontMetrics;
 import java.awt.Insets;
 import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
 import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
 import java.awt.event.MouseAdapter;
@@ -23,11 +22,13 @@ import java.util.LinkedList;
 import java.util.List;
 
 import javax.imageio.ImageIO;
+import javax.swing.AbstractAction;
 import javax.swing.Action;
 import javax.swing.Box;
 import javax.swing.DefaultListModel;
 import javax.swing.ImageIcon;
 import javax.swing.JButton;
+import javax.swing.JComponent;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JList;
@@ -617,16 +618,24 @@ public class MultiCloudDesktop extends JFrame {
 		progressBar.setPreferredSize(new Dimension(186, 15));
 		progressPanel.add(progressBar);
 
-		btnAbort = new JButton(icnAbort);
-		btnAbort.setEnabled(false);
-		btnAbort.setPreferredSize(new Dimension(21, 21));
-		btnAbort.setMargin(new Insets(2, 2, 2, 2));
-		btnAbort.addActionListener(new ActionListener() {
+		Action actAbort = new AbstractAction() {
+			/** Serialization constant. */
+			private static final long serialVersionUID = -3588389549240103346L;
+			/**
+			 * {@inheritDoc}
+			 */
 			@Override
 			public void actionPerformed(ActionEvent event) {
 				worker.abort();
 			}
-		});
+		};
+		btnAbort = new JButton(icnAbort);
+		btnAbort.setEnabled(false);
+		btnAbort.setPreferredSize(new Dimension(21, 21));
+		btnAbort.setMargin(new Insets(2, 2, 2, 2));
+		btnAbort.getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW).put(KeyStroke.getKeyStroke(KeyEvent.VK_ESCAPE, 0), "abort");
+		btnAbort.getActionMap().put("abort", actAbort);
+		btnAbort.addActionListener(actAbort);
 		progressPanel.add(btnAbort);
 
 		/* localization objects and background worker */

@@ -81,6 +81,8 @@ public class SynchronizeDialog extends JDialog {
 
 	/** Parent frame. */
 	private final MultiCloudDesktop parent;
+	/** Folder to be synchronized. */
+	private final File syncFolder;
 	/** Return code from the dialog. */
 	private int option;
 
@@ -88,11 +90,14 @@ public class SynchronizeDialog extends JDialog {
 	 * Ctor with necessary parameters.
 	 * @param parentFrame Parent frame.
 	 * @param title Dialog title.
+	 * @param syncFolder Synchronization folder.
+	 * @param data Synchronization data.
 	 * @param icnFolder Folder icon.
 	 * @param icnFile File icon.
 	 */
-	public SynchronizeDialog(MultiCloudDesktop parentFrame, String title, ImageIcon folder, ImageIcon file) {
-		parent = parentFrame;
+	public SynchronizeDialog(MultiCloudDesktop parentFrame, String title, File syncFolder, SyncData syncData, ImageIcon folder, ImageIcon file) {
+		this.parent = parentFrame;
+		this.syncFolder = syncFolder;
 
 		lblBrowse = new JLabel("Local folder content:");
 		lblBrowse.setAlignmentX(Component.LEFT_ALIGNMENT);
@@ -130,10 +135,10 @@ public class SynchronizeDialog extends JDialog {
 		browseTree.setRowHeight((folder.getIconHeight() > file.getIconHeight()) ? folder.getIconHeight() + 2 : file.getIconHeight() + 2);
 		browseTree.getSelectionModel().setSelectionMode(TreeSelectionModel.SINGLE_TREE_SELECTION);
 		loadLocalFileStructure();
-		importSyncData(parent.getPreferences().getSyncData(), (MultiCloudTreeNode) browseTree.getModel().getRoot());
+		importSyncData(syncData, (MultiCloudTreeNode) browseTree.getModel().getRoot());
 		JScrollPane browsePane = new JScrollPane();
 		browsePane.setAlignmentX(Component.LEFT_ALIGNMENT);
-		browsePane.setPreferredSize(new Dimension(240, 200));
+		browsePane.setPreferredSize(new Dimension(240, 240));
 		browsePane.setViewportView(browseTree);
 		browsePanel = new JPanel();
 		browsePanel.setLayout(new BoxLayout(browsePanel, BoxLayout.PAGE_AXIS));
@@ -181,7 +186,7 @@ public class SynchronizeDialog extends JDialog {
 		accountList.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
 		JScrollPane accountPane = new JScrollPane();
 		accountPane.setAlignmentX(Component.CENTER_ALIGNMENT);
-		accountPane.setPreferredSize(new Dimension(180, 180));
+		accountPane.setPreferredSize(new Dimension(180, 220));
 		accountPane.setVerticalScrollBarPolicy(ScrollPaneConstants.VERTICAL_SCROLLBAR_ALWAYS);
 		accountPane.setViewportView(accountList);
 		btnApply = new JButton("Apply to all sub-items");
@@ -205,7 +210,7 @@ public class SynchronizeDialog extends JDialog {
 		btnApply.setAlignmentX(Component.CENTER_ALIGNMENT);
 		btnApply.setEnabled(false);
 		btnApply.setMargin(new Insets(4, 20, 4, 20));
-		btnApply.setPreferredSize(new Dimension(180, btnApply.getPreferredSize().height));
+		btnApply.setMaximumSize(new Dimension(190, btnApply.getPreferredSize().height));
 		accountPanel = new JPanel();
 		accountPanel.setLayout(new BoxLayout(accountPanel, BoxLayout.PAGE_AXIS));
 		accountPanel.add(lblAccount);
@@ -213,7 +218,7 @@ public class SynchronizeDialog extends JDialog {
 		accountPanel.add(btnApply);
 
 		commonPanel = new JPanel(new BorderLayout(4, 0));
-		commonPanel.setBorder(new EmptyBorder(4, 4, 2, 4));
+		commonPanel.setBorder(new EmptyBorder(8, 8, 2, 8));
 		commonPanel.add(browsePanel, BorderLayout.CENTER);
 		commonPanel.add(accountPanel, BorderLayout.EAST);
 
@@ -226,7 +231,6 @@ public class SynchronizeDialog extends JDialog {
 			@Override
 			public void actionPerformed(ActionEvent event) {
 				option = JOptionPane.OK_OPTION;
-				parent.getPreferences().setSyncData(exportSyncData((MultiCloudTreeNode) browseTree.getModel().getRoot(), null));
 				dispose();
 			}
 		});
@@ -328,6 +332,14 @@ public class SynchronizeDialog extends JDialog {
 	}
 
 	/**
+	 * Returns synchronization data structure.
+	 * @return Synchronization data structure.
+	 */
+	public SyncData getSyncData() {
+		return exportSyncData((MultiCloudTreeNode) browseTree.getModel().getRoot(), null);
+	}
+
+	/**
 	 * Imports synchronization preferences from {@link cz.zcu.kiv.multiclouddesktop.data.SyncData} structures to tree structure.
 	 * @param data Data structure.
 	 * @param node Tree node.
@@ -380,10 +392,8 @@ public class SynchronizeDialog extends JDialog {
 	 * Method for loading local synchronization folder to tree structure.
 	 */
 	private void loadLocalFileStructure() {
-		String syncFolder = parent.getPreferences().getSyncFolder();
 		if (syncFolder != null) {
-			File root = new File(syncFolder);
-			MultiCloudTreeNode rootNode = loadLocalFiles(root, null);
+			MultiCloudTreeNode rootNode = loadLocalFiles(syncFolder, null);
 			browseTree.setModel(new DefaultTreeModel(rootNode));
 		}
 	}

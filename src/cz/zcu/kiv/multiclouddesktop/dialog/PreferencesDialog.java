@@ -27,6 +27,7 @@ import javax.swing.border.EmptyBorder;
 import cz.zcu.kiv.multiclouddesktop.MultiCloudDesktop;
 import cz.zcu.kiv.multiclouddesktop.data.ListDisplayType;
 import cz.zcu.kiv.multiclouddesktop.data.Preferences;
+import cz.zcu.kiv.multiclouddesktop.data.SyncData;
 
 /**
  * cz.zcu.kiv.multiclouddesktop.dialog/PreferencesDialog.java			<br /><br />
@@ -105,8 +106,12 @@ public class PreferencesDialog extends JDialog {
 	private final MultiCloudDesktop parent;
 	/** Preferences. */
 	private final Preferences prefs;
+	/** Synchronization data. */
+	private SyncData syncData;
 	/** Local synchronization folder. */
 	private File syncFolder;
+	/** Last synchronization folder used. */
+	private File syncFolderOld;
 	/** Return code from the dialog. */
 	private int option;
 	/** Folder icon. */
@@ -166,6 +171,7 @@ public class PreferencesDialog extends JDialog {
 				int option = chooser.showOpenDialog(parent);
 				switch (option) {
 				case JFileChooser.APPROVE_OPTION:
+					syncFolderOld = syncFolder;
 					syncFolder = chooser.getSelectedFile();
 					txtSyncFolder.setText(syncFolder.getPath());
 					break;
@@ -193,8 +199,20 @@ public class PreferencesDialog extends JDialog {
 			 */
 			@Override
 			public void actionPerformed(ActionEvent event) {
-				SynchronizeDialog dialog = new SynchronizeDialog(parent, "Synchronization content", folder, file);
-				dialog.setVisible(true);
+				if (validateOutput()) {
+					SynchronizeDialog dialog = new SynchronizeDialog(parent, "Synchronization content", syncFolder, syncData, folder, file);
+					dialog.setVisible(true);
+					int option = dialog.getOption();
+					switch (option) {
+					case JOptionPane.OK_OPTION:
+						syncData = dialog.getSyncData();
+						break;
+					case JOptionPane.CANCEL_OPTION:
+					case JOptionPane.CLOSED_OPTION:
+					default:
+						break;
+					}
+				}
 			}
 		});
 		syncContentPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
@@ -336,6 +354,7 @@ public class PreferencesDialog extends JDialog {
 		if (prefs.getSyncFolder() != null) {
 			txtSyncFolder.setText(prefs.getSyncFolder());
 		}
+		syncData = prefs.getSyncData();
 
 		pack();
 		setLocationRelativeTo(parent);
@@ -368,6 +387,7 @@ public class PreferencesDialog extends JDialog {
 		} else {
 			prefs.setSyncFolder(txtSyncFolder.getText());
 		}
+		prefs.setSyncData(syncData);
 		return prefs;
 	}
 
@@ -377,6 +397,9 @@ public class PreferencesDialog extends JDialog {
 	 */
 	private boolean validateOutput() {
 		boolean valid = true;
+		if (syncFolderOld == null) {
+			syncFolderOld = syncFolder;
+		}
 		if (txtSyncFolder.getText().trim().isEmpty()) {
 			syncFolder = null;
 		} else {
@@ -384,6 +407,11 @@ public class PreferencesDialog extends JDialog {
 			if (!syncFolder.isDirectory()) {
 				valid = false;
 				JOptionPane.showMessageDialog(parent, "Synchronization folder does not exist.", "Error", JOptionPane.ERROR_MESSAGE);
+			} else {
+				if (syncFolderOld != null && !syncFolder.equals(syncFolderOld)) {
+					syncData = null;
+					syncFolderOld = syncFolder;
+				}
 			}
 		}
 		return valid;
