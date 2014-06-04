@@ -94,6 +94,22 @@ public class DialogProgressListener extends ProgressListener {
 	}
 
 	/**
+	 * Returns the label for displaying text.
+	 * @return Label for displaying text.
+	 */
+	public JLabel getLabel() {
+		return lblSize;
+	}
+
+	/**
+	 * Returns the progress bar.
+	 * @return Progress bar.
+	 */
+	public JProgressBar getProgressBar() {
+		return progressBar;
+	}
+
+	/**
 	 * Method for closing the dialog on operation finish.
 	 */
 	protected void onFinish() {

@@ -666,7 +666,7 @@ public class MultiCloudDesktop extends JFrame {
 
 		/* shared actions */
 		actSynchronize = new SynchronizeAction(this);
-		actPreferences = new PreferencesAction(this, icnFolderSmall, icnFileSmall);
+		actPreferences = new PreferencesAction(this, icnFolderSmall, icnFileSmall, icnBadFileSmall);
 		actExit = new ExitAction(this);
 
 		actAddAccount = new AddAccountAction(this);
@@ -1239,6 +1239,8 @@ public class MultiCloudDesktop extends JFrame {
 			cloud.deleteAccount(account.getName());
 			accountModel.removeElement(account);
 			cache.removeAccount(account.getName());
+			prefs.removeAccount(prefs.getSyncData(), account.getName());
+			preferencesSave();
 			messageCallback.displayMessage("Account removed.");
 		} catch (MultiCloudException e) {
 			messageCallback.displayError(e.getMessage());
@@ -1265,6 +1267,8 @@ public class MultiCloudDesktop extends JFrame {
 			accountModel.removeElement(original);
 			accountModel.addElement(renamed);
 			cache.renameAccount(original.getName(), renamed.getName());
+			prefs.renameAccount(prefs.getSyncData(), original.getName(), renamed.getName());
+			preferencesSave();
 			messageCallback.displayMessage("Account renamed.");
 		} catch (MultiCloudException e) {
 			messageCallback.displayError(e.getMessage());

@@ -1,10 +1,12 @@
 package cz.zcu.kiv.multiclouddesktop.data;
 
 import java.io.File;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.HashMap;
+import java.util.Map;
 
 import javax.swing.tree.DefaultMutableTreeNode;
+
+import cz.zcu.kiv.multicloud.json.FileInfo;
 
 /**
  * cz.zcu.kiv.multiclouddesktop.data/MultiCloudTreeNode.java			<br /><br />
@@ -25,7 +27,7 @@ public class MultiCloudTreeNode extends DefaultMutableTreeNode {
 	/** Local folder or file. */
 	private final File file;
 	/** Accounts to synchronize to. */
-	private final List<String> accounts;
+	private final Map<String, FileInfo> accounts;
 
 	/**
 	 * Ctor with local file supplied.
@@ -34,7 +36,7 @@ public class MultiCloudTreeNode extends DefaultMutableTreeNode {
 	public MultiCloudTreeNode(File file) {
 		this.name = file.getName();
 		this.file = file;
-		this.accounts = new ArrayList<>();
+		this.accounts = new HashMap<>();
 	}
 
 	/**
@@ -42,11 +44,11 @@ public class MultiCloudTreeNode extends DefaultMutableTreeNode {
 	 * @param file Local file.
 	 * @param accounts Account list.
 	 */
-	public MultiCloudTreeNode(File file, List<String> accounts) {
+	public MultiCloudTreeNode(File file, Map<String, FileInfo> accounts) {
 		this.name = file.getName();
 		this.file = file;
 		if (file.isDirectory()) {
-			this.accounts = new ArrayList<>();
+			this.accounts = new HashMap<>();
 		} else {
 			this.accounts = accounts;
 		}
@@ -60,14 +62,14 @@ public class MultiCloudTreeNode extends DefaultMutableTreeNode {
 	public MultiCloudTreeNode(File file, String name) {
 		this.name = name;
 		this.file = file;
-		this.accounts = new ArrayList<>();
+		this.accounts = new HashMap<>();
 	}
 
 	/**
 	 * Returns selected synchronization accounts.
 	 * @return Selected synchronization accounts.
 	 */
-	public List<String> getAccounts() {
+	public Map<String, FileInfo> getAccounts() {
 		return accounts;
 	}
 

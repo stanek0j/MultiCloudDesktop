@@ -2,6 +2,9 @@ package cz.zcu.kiv.multiclouddesktop.data;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 
+import cz.zcu.kiv.multicloud.json.FileInfo;
+import cz.zcu.kiv.multicloud.utils.Utils;
+
 /**
  * cz.zcu.kiv.multiclouddesktop.data/Preferences.java			<br /><br />
  *
@@ -170,6 +173,43 @@ public class Preferences {
 	 */
 	public boolean isUploadNoOverwrite() {
 		return uploadNoOverwrite;
+	}
+
+	/**
+	 * Removes account from synchronization data.
+	 * @param node Root of the tree structure.
+	 * @param oldName Account to be removed.
+	 */
+	public void removeAccount(SyncData node, String oldName) {
+		if (node == null || Utils.isNullOrEmpty(oldName)) {
+			return;
+		}
+		if (node.getAccounts().containsKey(oldName)) {
+			node.getAccounts().remove(oldName);
+		}
+		for (SyncData inner: node.getNodes()) {
+			removeAccount(inner, oldName);
+		}
+	}
+
+	/**
+	 * Renames account in synchronization data.
+	 * @param node Root of the tree structure.
+	 * @param oldName Old name to rename from.
+	 * @param newName New name to rename to.
+	 */
+	public void renameAccount(SyncData node, String oldName, String newName) {
+		if (node == null || Utils.isNullOrEmpty(oldName) || Utils.isNullOrEmpty(newName)) {
+			return;
+		}
+		if (node.getAccounts().containsKey(oldName)) {
+			FileInfo value = node.getAccounts().get(oldName);
+			node.getAccounts().remove(oldName);
+			node.getAccounts().put(newName, value);
+		}
+		for (SyncData inner: node.getNodes()) {
+			renameAccount(inner, oldName, newName);
+		}
 	}
 
 	/**

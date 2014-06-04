@@ -118,6 +118,8 @@ public class PreferencesDialog extends JDialog {
 	private final ImageIcon folder;
 	/** File icon. */
 	private final ImageIcon file;
+	/** Bad file icon. */
+	private final ImageIcon badFile;
 
 	/**
 	 * Ctor with necessary parameters.
@@ -126,13 +128,15 @@ public class PreferencesDialog extends JDialog {
 	 * @param preferences Preferences to be edited.
 	 * @param icnFolder Folder icon.
 	 * @param icnFile File icon.
+	 * @param icnBadFile Bad file icon.
 	 */
-	public PreferencesDialog(MultiCloudDesktop parentFrame, String title, Preferences preferences, ImageIcon icnFolder, ImageIcon icnFile) {
+	public PreferencesDialog(MultiCloudDesktop parentFrame, String title, Preferences preferences, ImageIcon icnFolder, ImageIcon icnFile, ImageIcon icnBadFile) {
 		this.option = JOptionPane.DEFAULT_OPTION;
 		this.parent = parentFrame;
 		this.prefs = preferences;
 		this.folder = icnFolder;
 		this.file = icnFile;
+		this.badFile = icnBadFile;
 
 		chooser = new JFileChooser();
 		chooser.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
@@ -200,7 +204,7 @@ public class PreferencesDialog extends JDialog {
 			@Override
 			public void actionPerformed(ActionEvent event) {
 				if (validateOutput()) {
-					SynchronizeDialog dialog = new SynchronizeDialog(parent, "Synchronization content", syncFolder, syncData, folder, file);
+					SynchronizeDialog dialog = new SynchronizeDialog(parent, "Synchronization content", syncFolder, syncData, folder, file, badFile);
 					dialog.setVisible(true);
 					int option = dialog.getOption();
 					switch (option) {

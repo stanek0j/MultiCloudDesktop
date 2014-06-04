@@ -30,16 +30,20 @@ public class SynchronizeDialogTreeCellRenreder implements TreeCellRenderer {
 	private final ImageIcon folder;
 	/** File icon. */
 	private final ImageIcon file;
+	/** Bad file icon. */
+	private final ImageIcon badFile;
 
 	/**
 	 * Ctor with necessary parameters.
 	 * @param folder Folder icon.
 	 * @param file File icon.
+	 * @param badFile Bad file icon.
 	 */
-	public SynchronizeDialogTreeCellRenreder(ImageIcon folder, ImageIcon file) {
+	public SynchronizeDialogTreeCellRenreder(ImageIcon folder, ImageIcon file, ImageIcon badFile) {
 		this.renderer = new DefaultTreeCellRenderer();
 		this.folder = folder;
 		this.file = file;
+		this.badFile = badFile;
 	}
 
 	/**
@@ -55,7 +59,11 @@ public class SynchronizeDialogTreeCellRenreder implements TreeCellRenderer {
 			if (node.getFile().isDirectory()) {
 				cellIcon.setIcon(folder);
 			} else {
-				cellIcon.setIcon(file);
+				if (node.getAccounts().isEmpty()) {
+					cellIcon.setIcon(badFile);
+				} else {
+					cellIcon.setIcon(file);
+				}
 			}
 			JLabel cellName = new JLabel(node.getName());
 			if (isSelected) {

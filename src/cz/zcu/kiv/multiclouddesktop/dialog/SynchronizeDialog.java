@@ -94,8 +94,9 @@ public class SynchronizeDialog extends JDialog {
 	 * @param data Synchronization data.
 	 * @param icnFolder Folder icon.
 	 * @param icnFile File icon.
+	 * @param icnBadFile Bad file icon.
 	 */
-	public SynchronizeDialog(MultiCloudDesktop parentFrame, String title, File syncFolder, SyncData syncData, ImageIcon folder, ImageIcon file) {
+	public SynchronizeDialog(MultiCloudDesktop parentFrame, String title, File syncFolder, SyncData syncData, ImageIcon folder, ImageIcon file, ImageIcon badFile) {
 		this.parent = parentFrame;
 		this.syncFolder = syncFolder;
 
@@ -115,7 +116,7 @@ public class SynchronizeDialog extends JDialog {
 				}
 				if (node.getFile().isFile()) {
 					btnApply.setEnabled(false);
-					for (String account: node.getAccounts()) {
+					for (String account: node.getAccounts().keySet()) {
 						for (int i = 0; i < accountList.getModel().getSize(); i++) {
 							AccountData data = accountList.getModel().getElementAt(i);
 							if (account.equals(data.getName())) {
@@ -131,11 +132,14 @@ public class SynchronizeDialog extends JDialog {
 				accountList.repaint();
 			}
 		});
-		browseTree.setCellRenderer(new SynchronizeDialogTreeCellRenreder(folder, file));
+		browseTree.setCellRenderer(new SynchronizeDialogTreeCellRenreder(folder, file, badFile));
 		browseTree.setRowHeight((folder.getIconHeight() > file.getIconHeight()) ? folder.getIconHeight() + 2 : file.getIconHeight() + 2);
 		browseTree.getSelectionModel().setSelectionMode(TreeSelectionModel.SINGLE_TREE_SELECTION);
 		loadLocalFileStructure();
 		importSyncData(syncData, (MultiCloudTreeNode) browseTree.getModel().getRoot());
+		for (int i = 0; i < browseTree.getRowCount(); i++) {
+			browseTree.expandRow(i);
+		}
 		JScrollPane browsePane = new JScrollPane();
 		browsePane.setAlignmentX(Component.LEFT_ALIGNMENT);
 		browsePane.setPreferredSize(new Dimension(240, 240));
@@ -170,7 +174,7 @@ public class SynchronizeDialog extends JDialog {
 					item.setMatched(!item.isMatched());
 					if (node != null) {
 						if (item.isMatched()) {
-							node.getAccounts().add(item.getName());
+							node.getAccounts().put(item.getName(), null);
 						} else {
 							node.getAccounts().remove(item.getName());
 						}
@@ -205,6 +209,8 @@ public class SynchronizeDialog extends JDialog {
 				}
 				MultiCloudTreeNode root = (MultiCloudTreeNode) browseTree.getSelectionPath().getLastPathComponent();
 				applyToTree(root, selected);
+				browseTree.revalidate();
+				browseTree.repaint();
 			}
 		});
 		btnApply.setAlignmentX(Component.CENTER_ALIGNMENT);
@@ -290,8 +296,8 @@ public class SynchronizeDialog extends JDialog {
 		} else {
 			node.getAccounts().clear();
 			for (String account: accounts) {
-				if (!node.getAccounts().contains(account)) {
-					node.getAccounts().add(account);
+				if (!node.getAccounts().containsKey(account)) {
+					node.getAccounts().put(account, null);
 				}
 			}
 		}
@@ -315,7 +321,7 @@ public class SynchronizeDialog extends JDialog {
 				exportSyncData(inner, data);
 			}
 		} else {
-			data.getAccounts().addAll(node.getAccounts());
+			data.getAccounts().putAll(node.getAccounts());
 		}
 		if (parent != null) {
 			parent.getNodes().add(data);
@@ -350,7 +356,7 @@ public class SynchronizeDialog extends JDialog {
 		}
 		if (data.getName().equals(node.getName())) {
 			if (data.getNodes().isEmpty() && node.getFile().isFile()) {
-				node.getAccounts().addAll(data.getAccounts());
+				node.getAccounts().putAll(data.getAccounts());
 			} else {
 				for (SyncData content: data.getNodes()) {
 					for (int i = 0; i < node.getChildCount(); i++) {
