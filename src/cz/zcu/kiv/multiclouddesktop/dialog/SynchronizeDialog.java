@@ -322,6 +322,7 @@ public class SynchronizeDialog extends JDialog {
 			}
 		} else {
 			data.getAccounts().putAll(node.getAccounts());
+			data.setChecksum(node.getChecksum());
 		}
 		if (parent != null) {
 			parent.getNodes().add(data);
@@ -357,6 +358,7 @@ public class SynchronizeDialog extends JDialog {
 		if (data.getName().equals(node.getName())) {
 			if (data.getNodes().isEmpty() && node.getFile().isFile()) {
 				node.getAccounts().putAll(data.getAccounts());
+				node.setChecksum(data.getChecksum());
 			} else {
 				for (SyncData content: data.getNodes()) {
 					for (int i = 0; i < node.getChildCount(); i++) {

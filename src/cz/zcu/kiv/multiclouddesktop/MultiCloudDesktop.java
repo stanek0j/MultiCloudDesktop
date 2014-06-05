@@ -105,7 +105,7 @@ import cz.zcu.kiv.multiclouddesktop.renderer.FileInfoListCellRenderer;
 /**
  * cz.zcu.kiv.multiclouddesktop/MultiCloudDesktop.java			<br /><br />
  *
- * Main frame of the multicloud desktop application.
+ * Main frame of the MultiCloud desktop application.
  *
  * @author Jaromír Staněk
  * @version 1.0
@@ -115,13 +115,15 @@ public class MultiCloudDesktop extends JFrame {
 
 	/** Serialization constant. */
 	private static final long serialVersionUID = -1394767380063338580L;
+	/** The application frame. */
+	private static MultiCloudDesktop window;
 
 	/** Default file for holding preferences. */
 	public static final String PREFS_FILE = "preferences.json";
+	/** Remote synchronization folder. */
+	public static final String SYNC_FOLDER = "multicloud";
 	/** Application name. */
 	public static final String APP_NAME = "MultiCloudDesktop";
-	/** The application frame. */
-	private static MultiCloudDesktop window;
 
 	/**
 	 * Main entering point of the application.
@@ -341,7 +343,7 @@ public class MultiCloudDesktop extends JFrame {
 	/** Action for displaying information about application. */
 	private final Action actAbout;
 
-	/** Multicloud library. */
+	/** MultiCloud library. */
 	private final MultiCloud cloud;
 	/** Account manager. */
 	private final AccountManager accountManager;
@@ -1185,6 +1187,9 @@ public class MultiCloudDesktop extends JFrame {
 	 */
 	public synchronized void actionPreferences(Preferences preferences) {
 		prefs = preferences;
+		if (prefs.getSyncData() != null) {
+			prefs.getSyncData().setRoot(true);
+		}
 		preferencesSave();
 		switch (prefs.getDisplayType()) {
 		case ICONS:
@@ -1286,8 +1291,13 @@ public class MultiCloudDesktop extends JFrame {
 		return worker.search(account, query, callback);
 	}
 
-	public synchronized void actionSynchronize() {
-
+	public synchronized void actionSynchronize(ProgressDialog dialog) {
+		progressListener.setDialog(dialog);
+		String[] accounts = new String[accountModel.getSize()];
+		for (int i = 0; i < accountModel.getSize(); i++) {
+			accounts[i] = accountModel.get(i).getName();
+		}
+		worker.synchronize(accounts, new File(prefs.getSyncFolder()), dialog);
 	}
 
 	/**
@@ -1307,6 +1317,7 @@ public class MultiCloudDesktop extends JFrame {
 		preferencesSave();
 		worker.upload(currentAccount, file, currentFolder, existing, overwrite, dialog);
 	}
+
 
 	/**
 	 * Returns the account list.
@@ -1439,6 +1450,9 @@ public class MultiCloudDesktop extends JFrame {
 		try {
 			ObjectMapper mapper = json.getMapper();
 			loadedPrefs = mapper.readValue(new File(PREFS_FILE), Preferences.class);
+			if (loadedPrefs.getSyncData() != null) {
+				loadedPrefs.getSyncData().setRoot(true);
+			}
 		} catch (IOException e) {
 			if (messageCallback != null) {
 				messageCallback.displayError("Preferences file not found.");

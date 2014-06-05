@@ -1,5 +1,6 @@
 package cz.zcu.kiv.multiclouddesktop.data;
 
+import java.io.File;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -26,14 +27,17 @@ public class SyncData {
 	private Map<String, FileInfo> accounts;
 	/** Child nodes. */
 	private List<SyncData> nodes;
-	/** Remote files. */
-	@JsonIgnore
-	private List<FileInfo> remote;
 	/** Checksum of the file. */
 	private String checksum;
-	/** If the file was changed. */
+	/** Original checksum of the file before synchronization. */
 	@JsonIgnore
-	private boolean changed;
+	private String origChecksum;
+	/** Local file to be synchronized. */
+	@JsonIgnore
+	private File localFile;
+	/** If the node is root. */
+	@JsonIgnore
+	private boolean root;
 
 	/**
 	 * Empty ctor.
@@ -41,7 +45,6 @@ public class SyncData {
 	public SyncData() {
 		accounts = new HashMap<>();
 		nodes = new ArrayList<>();
-		remote = new ArrayList<>();
 	}
 
 	/**
@@ -61,6 +64,14 @@ public class SyncData {
 	}
 
 	/**
+	 * Returns local file.
+	 * @return Local file.
+	 */
+	public File getLocalFile() {
+		return localFile;
+	}
+
+	/**
 	 * Returns file name.
 	 * @return File name.
 	 */
@@ -77,19 +88,19 @@ public class SyncData {
 	}
 
 	/**
-	 * Returns remote files.
-	 * @return Remote files.
+	 * Returns the original checksum of the file.
+	 * @return Original checksum of the file.
 	 */
-	public List<FileInfo> getRemote() {
-		return remote;
+	public String getOrigChecksum() {
+		return origChecksum;
 	}
 
 	/**
-	 * Returns if the file was changed.
-	 * @return If the file was changed.
+	 * Returns if the node is root.
+	 * @return If the node is root.
 	 */
-	public boolean isChanged() {
-		return changed;
+	public boolean isRoot() {
+		return root;
 	}
 
 	/**
@@ -101,19 +112,19 @@ public class SyncData {
 	}
 
 	/**
-	 * Sets if the file was changed.
-	 * @param changed If the file was changed.
-	 */
-	public void setChanged(boolean changed) {
-		this.changed = changed;
-	}
-
-	/**
 	 * Sets the checksum of the file.
 	 * @param checksum Checksum of the file.
 	 */
 	public void setChecksum(String checksum) {
 		this.checksum = checksum;
+	}
+
+	/**
+	 * Sets local file.
+	 * @param localFile Local file.
+	 */
+	public void setLocalFile(File localFile) {
+		this.localFile = localFile;
 	}
 
 	/**
@@ -133,11 +144,19 @@ public class SyncData {
 	}
 
 	/**
-	 * Sets remote files.
-	 * @param remote Remote files.
+	 * Sets the original checksum of the file.
+	 * @param origChecksum Original checksum of the file.
 	 */
-	public void setRemote(List<FileInfo> remote) {
-		this.remote = remote;
+	public void setOrigChecksum(String origChecksum) {
+		this.origChecksum = origChecksum;
+	}
+
+	/**
+	 * Sets if the node is root.
+	 * @param root If the node is root.
+	 */
+	public void setRoot(boolean root) {
+		this.root = root;
 	}
 
 }

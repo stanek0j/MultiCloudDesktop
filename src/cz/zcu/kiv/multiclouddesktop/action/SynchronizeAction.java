@@ -2,11 +2,11 @@ package cz.zcu.kiv.multiclouddesktop.action;
 
 import java.awt.event.ActionEvent;
 import java.awt.event.KeyEvent;
-import java.io.File;
 
 import javax.swing.KeyStroke;
 
 import cz.zcu.kiv.multiclouddesktop.MultiCloudDesktop;
+import cz.zcu.kiv.multiclouddesktop.dialog.ProgressDialog;
 
 /**
  * cz.zcu.kiv.multiclouddesktop.action/SynchronizeAction.java			<br /><br />
@@ -43,7 +43,12 @@ public class SynchronizeAction extends CloudAction {
 		if (parent.getPreferences().getSyncFolder() == null) {
 			parent.getMessageCallback().displayError("Synchronization folder not set.");
 		} else {
-			File sync = new File(parent.getPreferences().getSyncFolder());
+			ProgressDialog dialog = new ProgressDialog(parent, parent.getProgressListener().getComponents(), ACT_NAME);
+			parent.actionSynchronize(dialog);
+			dialog.setVisible(true);
+			if (dialog.isAborted()) {
+				parent.actionAbort();
+			}
 		}
 	}
 

@@ -2,10 +2,18 @@ package cz.zcu.kiv.multiclouddesktop.data;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
 
+import javax.swing.ButtonGroup;
 import javax.swing.JButton;
+import javax.swing.JComponent;
+import javax.swing.JOptionPane;
 import javax.swing.JProgressBar;
+import javax.swing.JRadioButton;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 
@@ -22,12 +30,13 @@ import cz.zcu.kiv.multiclouddesktop.MultiCloudDesktop;
 import cz.zcu.kiv.multiclouddesktop.callback.BackgroundCallback;
 import cz.zcu.kiv.multiclouddesktop.callback.BrowseCallback;
 import cz.zcu.kiv.multiclouddesktop.callback.SearchCallback;
+import cz.zcu.kiv.multiclouddesktop.dialog.DialogProgressListener;
 import cz.zcu.kiv.multiclouddesktop.dialog.ProgressDialog;
 
 /**
  * cz.zcu.kiv.multiclouddesktop.data/BackgroundWorker.java			<br /><br />
  *
- * Background worker for using the multicloud library properly.
+ * Background worker for using the MultiCloud library properly.
  *
  * @author Jaromír Staněk
  * @version 1.0
@@ -37,7 +46,7 @@ public class BackgroundWorker extends Thread {
 
 	/** Parent frame. */
 	private final MultiCloudDesktop parent;
-	/** Multicloud library. */
+	/** MultiCloud library. */
 	private final MultiCloud cloud;
 	/** Checksum cache. */
 	private final ChecksumProvider cache;
@@ -97,7 +106,7 @@ public class BackgroundWorker extends Thread {
 	/**
 	 * Ctor with necessary parameters.
 	 * @param parent Parent frame.
-	 * @param cloud Multicloud library.
+	 * @param cloud MultiCloud library.
 	 * @param cache Checksum cache.
 	 * @param abort Abort button.
 	 * @param progress Progress bar.
@@ -209,6 +218,24 @@ public class BackgroundWorker extends Thread {
 	}
 
 	/**
+	 * Clears the synchronization data.
+	 * @param node Synchronization data.
+	 */
+	private void clearLocalStructure(SyncData node) {
+		if (node == null) {
+			return;
+		}
+		node.setOrigChecksum(node.getChecksum());
+		node.setChecksum(null);
+		for (String key: node.getAccounts().keySet()) {
+			node.getAccounts().put(key, null);
+		}
+		for (SyncData content: node.getNodes()) {
+			clearLocalStructure(content);
+		}
+	}
+
+	/**
 	 * Preparing task for copying files.
 	 * @param accounName Account name.
 	 * @param file File to be copied.
@@ -252,6 +279,67 @@ public class BackgroundWorker extends Thread {
 			}
 		}
 		return ready;
+	}
+
+	/**
+	 * Creates all folders along a path supplied.
+	 * @param account Account name.
+	 * @param structure Path to be created.
+	 * @param root Root folder to start creating folders in.
+	 * @return The folder at the end of the path.
+	 * @throws InterruptedException If the process was interrupted.
+	 */
+	private FileInfo createFolderStructure(String account, List<SyncData> structure, FileInfo root) throws InterruptedException {
+		if (account == null || root == null) {
+			return null;
+		}
+		if (structure.isEmpty()) {
+			return root;
+		}
+		List<SyncData> s = new ArrayList<>();
+		s.addAll(structure);
+		FileInfo destination = null;
+		FileInfo list = null;
+		FileInfo folder = root;
+		do {
+			try {
+				list = cloud.listFolder(account, folder);
+				if (list != null) {
+					SyncData find = s.get(0);
+					boolean found = false;
+					for (FileInfo f: list.getContent()) {
+						if (find.getName().equals(f.getName()) && f.getFileType() == FileType.FOLDER) {
+							s.remove(0);
+							list = f;
+							found = true;
+							break;
+						}
+					}
+					if (!found) {
+						cloud.createFolder(account, find.getName(), folder);
+						list = cloud.listFolder(account, folder);
+						if (list != null) {
+							for (FileInfo f: list.getContent()) {
+								if (find.getName().equals(f.getName()) && f.getFileType() == FileType.FOLDER) {
+									s.remove(0);
+									list = f;
+									break;
+								}
+							}
+						}
+					}
+				} else {
+					break;
+				}
+				folder = list;
+			} catch (MultiCloudException | OAuth2SettingsException e) {
+				break;
+			}
+		} while (!s.isEmpty());
+		if (s.isEmpty()) {
+			destination = folder;
+		}
+		return destination;
 	}
 
 	/**
@@ -337,6 +425,40 @@ public class BackgroundWorker extends Thread {
 			}
 		}
 		return ready;
+	}
+
+	/**
+	 * Compute missing checksums.
+	 * @param node Synchronization data.
+	 * @throws MultiCloudException If the operation failed.
+	 * @throws OAuth2SettingsException If the authorization failed.
+	 * @throws InterruptedException If the process was interrupted.
+	 */
+	private void checksumStructure(SyncData node) throws MultiCloudException, OAuth2SettingsException, InterruptedException {
+		if (node == null) {
+			return;
+		}
+		for (Entry<String, FileInfo> remote: node.getAccounts().entrySet()) {
+			FileInfo remoteFile = remote.getValue();
+			if (remoteFile != null && remoteFile.getChecksum() == null) {
+				try {
+					for (int i = 0; i < parent.getPreferences().getThreadsPerAccount(); i++) {
+						cloud.addDownloadSource(remote.getKey(), remoteFile);
+					}
+					cloud.downloadMultiFile(tmpFile, true);
+					String checksum = cache.computeChecksum(tmpFile);
+					remoteFile.setChecksum(checksum);
+					cache.add(remote.getKey(), remoteFile);
+				} catch (MultiCloudException | OAuth2SettingsException e) {
+					if (aborted) {
+						throw e;
+					}
+				}
+			}
+		}
+		for (SyncData content: node.getNodes()) {
+			checksumStructure(content);
+		}
 	}
 
 	/**
@@ -458,12 +580,37 @@ public class BackgroundWorker extends Thread {
 	}
 
 	/**
+	 * Reads local file structure and computes checksums for files.
+	 * @param file Local file.
+	 * @param node Synchronization data.
+	 */
+	private void readLocalStructure(File file, SyncData node) {
+		if (file == null || node == null) {
+			return;
+		}
+		if (file.getName().equals(node.getName()) || file.equals(localFile)) {
+			node.setLocalFile(file);
+			if (node.getNodes().isEmpty() && file.isFile()) {
+				node.setChecksum(cache.computeChecksum(file));
+			} else {
+				for (SyncData content: node.getNodes()) {
+					for (File inner: file.listFiles()) {
+						if (inner.getName().equals(content.getName())) {
+							readLocalStructure(inner, content);
+						}
+					}
+				}
+			}
+		}
+	}
+
+	/**
 	 * Read remote checksum caches into local cache.
 	 * @throws MultiCloudException If the operation failed.
 	 * @throws OAuth2SettingsException If the authorization failed.
-	 * @throws InterruptedException If the token refreshing process was interrupted.
+	 * @throws InterruptedException If the process was interrupted.
 	 */
-	private synchronized void readRemoteCache() throws MultiCloudException, OAuth2SettingsException, InterruptedException {
+	private void readRemoteCache() throws MultiCloudException, OAuth2SettingsException, InterruptedException {
 		ObjectMapper mapper = json.getMapper();
 		for (String accountName: cache.getRemoteAccounts()) {
 			if (cache.getRemote(accountName) != null) {
@@ -482,6 +629,37 @@ public class BackgroundWorker extends Thread {
 	}
 
 	/**
+	 * Read remote file structure.
+	 * @param account Account name.
+	 * @param file Remote file.
+	 * @param node Synchronization data.
+	 * @throws MultiCloudException If the operation failed.
+	 * @throws OAuth2SettingsException If the authorization failed.
+	 * @throws InterruptedException If the process was interrupted.
+	 */
+	private void readRemoteStructure(String account, FileInfo file, SyncData node) throws MultiCloudException, OAuth2SettingsException, InterruptedException {
+		if (file == null || node == null) {
+			return;
+		}
+		if (file.getName().equals(node.getName()) || file == src) {
+			if (node.getNodes().isEmpty() && file.getFileType() == FileType.FILE) {
+				if (node.getAccounts().containsKey(account)) {
+					node.getAccounts().put(account, file);
+				}
+			} else {
+				FileInfo list = cloud.listFolder(account, file);
+				cache.provideChecksum(account, list);
+				cache.provideChecksum(account, list.getContent());
+				for (SyncData content: node.getNodes()) {
+					for (FileInfo inner: list.getContent()) {
+						if (inner.getName().equals(content.getName())) {
+							readRemoteStructure(account, inner, content);
+						}
+					}
+				}
+			}
+		}
+	}	/**
 	 * Preparing task for refreshing account data.
 	 * @param accountName Account name.
 	 * @param accountNames Account names.
@@ -653,11 +831,153 @@ public class BackgroundWorker extends Thread {
 						}
 					}
 				}
-				if (messageCallback != null) {
-					messageCallback.onFinish(task, "Loading finished.", false);
+				synchronized (this) {
+					if (aborted) {
+						if (messageCallback != null) {
+							messageCallback.onFinish(task, "Loading aborted.", true);
+						}
+					} else {
+						if (messageCallback != null) {
+							messageCallback.onFinish(task, "Loading finished.", false);
+						}
+					}
 				}
 				break;
 			case SYNCHRONIZE:
+				DialogProgressListener listener = parent.getProgressListener();
+				boolean failed = false;
+				/* analyze local folder */
+				listener.getProgressBar().setIndeterminate(true);
+				listener.getLabel().setText("Analyzing local files...");
+				listener.setReporting(false);
+				dialog.preventClosing(true);
+				SyncData data = parent.getPreferences().getSyncData();
+				clearLocalStructure(data);
+				readLocalStructure(localFile, data);
+				parent.actionPreferences(parent.getPreferences());
+				/* analyze remote folders */
+				listener.getLabel().setText("Analyzing remote files...");
+				Map<String, FileInfo> syncRoot = new HashMap<>();
+				try {
+					/* get remote accounts info */
+					for (int i = 0; i < accounts.length; i++) {
+						AccountInfo info = cloud.accountInfo(accounts[i]);
+						cache.addAccount(accounts[i], info.getId());
+					}
+					/* get remote sync roots and caches */
+					readRemoteCache();
+					for (int i = 0; i < accounts.length; i++) {
+						FileInfo list = cloud.listFolder(accounts[i], null);
+						if (list != null) {
+							FileInfo remoteCache = null;
+							/* find sync folder and cache */
+							for (FileInfo f: list.getContent()) {
+								if (f.getName().equals(MultiCloudDesktop.SYNC_FOLDER)) {
+									syncRoot.put(accounts[i], f);
+								}
+								if (f.getName().equals(ChecksumProvider.CHECKSUM_FILE)) {
+									if (cache.getRemoteDate(accounts[i]) == null || f.getModified().after(cache.getRemoteDate(accounts[i]))) {
+										cloud.downloadFile(accounts[i], f, tmpFile, true);
+										try {
+											ChecksumCache remote = mapper.readValue(tmpFile, ChecksumCache.class);
+											cache.merge(remote);
+										} catch (IOException e) {
+											/* ignore file exceptions */
+										}
+									}
+									remoteCache = f;
+									cache.putRemote(accounts[i], list, f);
+								}
+							}
+							if (remoteCache != null) {
+								/* update existing checksum cache file */
+								cloud.updateFile(accounts[i], list, remoteCache, ChecksumProvider.CHECKSUM_FILE, new File(ChecksumProvider.CHECKSUM_FILE));
+								FileInfo metadata = cloud.metadata(accounts[i], remoteCache);
+								if (metadata != null) {
+									cache.putRemote(accounts[i], list, metadata);
+								}
+							} else {
+								/* upload new checksum cache file */
+								cloud.uploadFile(accounts[i], list, ChecksumProvider.CHECKSUM_FILE, true, new File(ChecksumProvider.CHECKSUM_FILE));
+								FileInfo r = cloud.listFolder(accounts[i], list);
+								if (r != null) {
+									for (FileInfo f: r.getContent()) {
+										if (f.getName().equals(ChecksumProvider.CHECKSUM_FILE)) {
+											cache.putRemote(accounts[i], list, f);
+											break;
+										}
+									}
+								}
+							}
+						}
+						/* create sync folder, if not found */
+						if (syncRoot.get(accounts[i]) == null) {
+							cloud.createFolder(accounts[i], MultiCloudDesktop.SYNC_FOLDER, list);
+						}
+						if (syncRoot.get(accounts[i]) == null) {
+							list = cloud.listFolder(accounts[i], null);
+							if (list != null) {
+								for (FileInfo f: list.getContent()) {
+									if (f.getName().equals(MultiCloudDesktop.SYNC_FOLDER)) {
+										syncRoot.put(accounts[i], f);
+										break;
+									}
+								}
+							}
+						}
+					}
+					/* traverse through remote folders */
+					for (int i = 0; i < accounts.length; i++) {
+						src = syncRoot.get(accounts[i]);
+						readRemoteStructure(accounts[i], src, data);
+					}
+					/* compute missing checksums */
+					checksumStructure(data);
+					writeRemoteCache();
+					parent.actionPreferences(parent.getPreferences());
+				} catch (MultiCloudException | OAuth2SettingsException | InterruptedException e) {
+					failed = true;
+					if (messageCallback != null) {
+						messageCallback.onFinish(task, e.getMessage(), true);
+					}
+				}
+				/* synchronize files */
+				listener.getProgressBar().setIndeterminate(false);
+				listener.getLabel().setText("Synchronizing...");
+				listener.setReporting(true);
+				if (!failed) {
+					try {
+						synchronizeStructure(data, new ArrayList<SyncData>(), syncRoot);
+						dialog.preventClosing(false);
+						dialog.closeDialog();
+						beginOperation();
+						for (int i = 0; i < accounts.length; i++) {
+							AccountQuota quota = cloud.accountQuota(accounts[i]);
+							if (quotaCallback != null) {
+								quotaCallback.onFinish(task, accounts[i], quota);
+							}
+						}
+						writeRemoteCache();
+						parent.actionPreferences(parent.getPreferences());
+					} catch (MultiCloudException | OAuth2SettingsException | InterruptedException e) {
+						if (messageCallback != null) {
+							messageCallback.onFinish(task, e.getMessage(), true);
+						}
+					}
+				}
+
+				tmpFile.delete();
+				synchronized (this) {
+					if (dialog != null) {
+						dialog.closeDialog();
+						dialog = null;
+					}
+				}
+				if (!failed && !aborted) {
+					if (messageCallback != null) {
+						messageCallback.onFinish(task, "Synchronization finished.", false);
+					}
+				}
 				break;
 			case REFRESH:
 				try {
@@ -672,6 +992,7 @@ public class BackgroundWorker extends Thread {
 					readRemoteCache();
 					FileInfo list = cloud.listFolder(account, src, showDeleted, showShared);
 					if (list != null) {
+						FileInfo remoteCache = null;
 						for (FileInfo f: list.getContent()) {
 							if (f.getName().equals(ChecksumProvider.CHECKSUM_FILE)) {
 								if (cache.getRemoteDate(account) == null || f.getModified().after(cache.getRemoteDate(account))) {
@@ -684,33 +1005,26 @@ public class BackgroundWorker extends Thread {
 									}
 								}
 								cache.putRemote(account, list, f);
+								remoteCache = f;
 								break;
 							}
 						}
-						FileInfo remoteRoot = cache.getRemoteRoot(account);
-						FileInfo remote = cache.getRemote(account);
-						if (remoteRoot == null) {
-							remoteRoot = cloud.listFolder(account, null);
-							cache.putRemote(account, remoteRoot, remote);
-						}
-						if (remoteRoot != null) {
-							if (remote != null) {
-								/* update existing checksum cache file */
-								cloud.updateFile(account, remoteRoot, remote, ChecksumProvider.CHECKSUM_FILE, new File(ChecksumProvider.CHECKSUM_FILE));
-								FileInfo metadata = cloud.metadata(account, remote);
-								if (metadata != null) {
-									cache.putRemote(account, remoteRoot, metadata);
-								}
-							} else {
-								/* upload new checksum cache file */
-								cloud.uploadFile(account, remoteRoot, ChecksumProvider.CHECKSUM_FILE, true, new File(ChecksumProvider.CHECKSUM_FILE));
-								FileInfo r = cloud.listFolder(account, remoteRoot);
-								if (r != null) {
-									for (FileInfo f: r.getContent()) {
-										if (f.getName().equals(ChecksumProvider.CHECKSUM_FILE)) {
-											cache.putRemote(account, remoteRoot, f);
-											break;
-										}
+						if (remoteCache != null) {
+							/* update existing checksum cache file */
+							cloud.updateFile(account, list, remoteCache, ChecksumProvider.CHECKSUM_FILE, new File(ChecksumProvider.CHECKSUM_FILE));
+							FileInfo metadata = cloud.metadata(account, remoteCache);
+							if (metadata != null) {
+								cache.putRemote(account, list, metadata);
+							}
+						} else {
+							/* upload new checksum cache file */
+							cloud.uploadFile(account, list, ChecksumProvider.CHECKSUM_FILE, true, new File(ChecksumProvider.CHECKSUM_FILE));
+							FileInfo r = cloud.listFolder(account, list);
+							if (r != null) {
+								for (FileInfo f: r.getContent()) {
+									if (f.getName().equals(ChecksumProvider.CHECKSUM_FILE)) {
+										cache.putRemote(account, list, f);
+										break;
 									}
 								}
 							}
@@ -727,7 +1041,6 @@ public class BackgroundWorker extends Thread {
 						listCallback.onFinish(task, account, list);
 					}
 				} catch (MultiCloudException | OAuth2SettingsException | InterruptedException e) {
-					e.printStackTrace();
 					if (messageCallback != null) {
 						messageCallback.onFinish(task, e.getMessage(), true);
 					}
@@ -798,8 +1111,8 @@ public class BackgroundWorker extends Thread {
 						messageCallback.onFinish(task, "Upload finished in " + String.format("%.2f", time) + " seconds.", false);
 					}
 					beginOperation();
-					if (dialog != null) {
-						synchronized (this) {
+					synchronized (this) {
+						if (dialog != null) {
 							dialog = null;
 						}
 					}
@@ -860,8 +1173,8 @@ public class BackgroundWorker extends Thread {
 					if (messageCallback != null) {
 						messageCallback.onFinish(task, e.getMessage(), true);
 					}
-					if (dialog != null) {
-						synchronized (this) {
+					synchronized (this) {
+						if (dialog != null) {
 							dialog.closeDialog();
 							dialog = null;
 						}
@@ -888,8 +1201,8 @@ public class BackgroundWorker extends Thread {
 						messageCallback.onFinish(task, "Upload finished in " + String.format("%.2f", time) + " seconds.", false);
 					}
 					beginOperation();
-					if (dialog != null) {
-						synchronized (this) {
+					synchronized (this) {
+						if (dialog != null) {
 							dialog = null;
 						}
 					}
@@ -956,8 +1269,8 @@ public class BackgroundWorker extends Thread {
 					if (messageCallback != null) {
 						messageCallback.onFinish(task, e.getMessage(), true);
 					}
-					if (dialog != null) {
-						synchronized (this) {
+					synchronized (this) {
+						if (dialog != null) {
 							dialog.closeDialog();
 							dialog = null;
 						}
@@ -1163,8 +1476,8 @@ public class BackgroundWorker extends Thread {
 						cloud.uploadFile(account, src, dstName, true, tmpFile);
 					}
 					beginOperation();
-					if (dialog != null) {
-						synchronized (this) {
+					synchronized (this) {
+						if (dialog != null) {
 							dialog = null;
 						}
 					}
@@ -1239,8 +1552,8 @@ public class BackgroundWorker extends Thread {
 						listCallback.onFinish(task, account, list);
 					}
 				} catch (MultiCloudException | OAuth2SettingsException | InterruptedException e) {
-					if (dialog != null) {
-						synchronized (this) {
+					synchronized (this) {
+						if (dialog != null) {
 							dialog.closeDialog();
 							dialog = null;
 						}
@@ -1333,9 +1646,9 @@ public class BackgroundWorker extends Thread {
 							cloud.addDownloadSource(accounts[i], srcs[i]);
 						}
 					}
-					cloud.downloadMultiFile(tmpFile, overwrite);
-					if (dialog != null) {
-						synchronized (this) {
+					cloud.downloadMultiFile(tmpFile, true);
+					synchronized (this) {
+						if (dialog != null) {
 							dialog = null;
 						}
 					}
@@ -1419,6 +1732,234 @@ public class BackgroundWorker extends Thread {
 	}
 
 	/**
+	 * Preparing task for synchronization of folders.
+	 * @param accountNames Account names.
+	 * @param syncFolder Local synchronization folder.
+	 * @param progressDialog Progress dialog.
+	 * @return If the task was initialized.
+	 */
+	public boolean synchronize(String[] accountNames, File syncFolder, ProgressDialog progressDialog) {
+		boolean ready = false;
+		synchronized (this) {
+			if (task == BackgroundTask.NONE) {
+				task = BackgroundTask.SYNCHRONIZE;
+				dialog = progressDialog;
+				accounts = accountNames;
+				localFile = syncFolder;
+				ready = true;
+				notifyAll();
+			}
+		}
+		return ready;
+	}
+
+	/**
+	 * Recursive method for synchronizing content of remote folders.
+	 * @param node Synchronization data.
+	 * @param folderStructure Path to current location.
+	 * @param syncRoot Root folder for synchronization.
+	 * @throws MultiCloudException If the operation failed.
+	 * @throws OAuth2SettingsException If the authorization failed.
+	 * @throws InterruptedException If the process was interrupted.
+	 */
+	private void synchronizeStructure(SyncData node, List<SyncData> folderStructure, Map<String, FileInfo> syncRoot) throws MultiCloudException, OAuth2SettingsException, InterruptedException {
+		boolean exists = true;
+		if (node.getChecksum() == null) {
+			/* folder or no local file */
+			exists = false;
+		}
+		if (exists) {
+			Map<String, List<Entry<String, FileInfo>>> conflicted = new HashMap<>();
+			Map<String, FileInfo> downloadList = new HashMap<>();
+			Map<String, FileInfo> uploadList = new HashMap<>();
+			boolean skip = false;
+			for (Entry<String, FileInfo> remote: node.getAccounts().entrySet()) {
+				FileInfo remoteFile = remote.getValue();
+				if (remoteFile == null) {
+					/* no remote file */
+					uploadList.put(remote.getKey(), remoteFile);
+				} else {
+					if (remoteFile.getChecksum() != null) {
+						if (!remoteFile.getChecksum().equals(node.getChecksum())) {
+							/* remote file not matching local */
+							if (!remoteFile.getChecksum().equals(node.getOrigChecksum())) {
+								/* conflicted file */
+								if (conflicted.containsKey(remoteFile.getChecksum())) {
+									conflicted.get(remoteFile.getChecksum()).add(remote);
+								} else {
+									List<Entry<String, FileInfo>> list = new ArrayList<>();
+									list.add(remote);
+									conflicted.put(remoteFile.getChecksum(), list);
+								}
+							} else {
+								/* old version */
+								uploadList.put(remote.getKey(), remoteFile);
+							}
+						}
+					} else {
+						/* no remote checksum - skip file */
+					}
+				}
+			}
+			/* resolve conflict */
+			if (!conflicted.isEmpty()) {
+				int i = 0;
+				JComponent[] components = new JComponent[conflicted.size() + 3];
+				ButtonGroup buttons = new ButtonGroup();
+				JRadioButton uploadLocal = new JRadioButton("Upload local file.");
+				buttons.add(uploadLocal);
+				components[i++] = uploadLocal;
+				String[] checksum = new String[conflicted.size()];
+				JRadioButton[] downloadRemote = new JRadioButton[conflicted.size()];
+				for (Entry<String, List<Entry<String, FileInfo>>> conflict: conflicted.entrySet()) {
+					StringBuilder sb = new StringBuilder();
+					for (Entry<String, FileInfo> entry: conflict.getValue()) {
+						if (sb.length() != 0) {
+							sb.append(", ");
+						}
+						sb.append(entry.getKey());
+					}
+					JRadioButton download = new JRadioButton("Download file from: " + sb.toString() + ".");
+					buttons.add(download);
+					downloadRemote[i - 1] = download;
+					checksum[i - 1] = conflict.getKey();
+					components[i++] = download;
+				}
+				JRadioButton ignoreConflict = new JRadioButton("Ignore conflicted files.");
+				buttons.add(ignoreConflict);
+				components[i++] = ignoreConflict;
+				JRadioButton skipFile = new JRadioButton("Skip synchronization of this file.");
+				buttons.add(skipFile);
+				components[i++] = skipFile;
+				int option = JOptionPane.showConfirmDialog(parent, components, "Conflicted files", JOptionPane.OK_CANCEL_OPTION, JOptionPane.WARNING_MESSAGE);
+				switch (option) {
+				case JOptionPane.OK_OPTION:
+					if (uploadLocal.isSelected()) {
+						for (List<Entry<String, FileInfo>> list: conflicted.values()) {
+							for (Entry<String, FileInfo> entry: list) {
+								uploadList.put(entry.getKey(), entry.getValue());
+							}
+						}
+					} else if (ignoreConflict.isSelected()) {
+						/* do nothing */
+					} else if (skipFile.isSelected()) {
+						skip = true;
+					} else {
+						for (int j = 0; j < downloadRemote.length; j++) {
+							if (downloadRemote[j].isSelected()) {
+								node.setChecksum(checksum[j]);
+								List<Entry<String, FileInfo>> list = conflicted.get(checksum[j]);
+								for (Entry<String, FileInfo> entry: list) {
+									downloadList.put(entry.getKey(), entry.getValue());
+								}
+								for (Entry<String, FileInfo> entry: node.getAccounts().entrySet()) {
+									if (!downloadList.containsKey(entry.getKey())) {
+										uploadList.put(entry.getKey(), entry.getValue());
+									}
+								}
+								break;
+							}
+						}
+					}
+					break;
+				case JOptionPane.CANCEL_OPTION:
+				case JOptionPane.CLOSED_OPTION:
+				default:
+					skip = true;
+					break;
+				}
+			}
+			if (!skip) {
+				try {
+					/* download remote file */
+					if (!downloadList.isEmpty()) {
+						for (int i = 0; i < parent.getPreferences().getThreadsPerAccount(); i++) {
+							for (Entry<String, FileInfo> entry: downloadList.entrySet()) {
+								cloud.addDownloadSource(entry.getKey(), entry.getValue());
+							}
+						}
+						cloud.downloadMultiFile(node.getLocalFile(), true);
+					}
+					/* upload local file */
+					Map<String, FileInfo> destinations = new HashMap<>();
+					for (Entry<String, FileInfo> entry: uploadList.entrySet()) {
+						FileInfo destination = createFolderStructure(entry.getKey(), folderStructure, syncRoot.get(entry.getKey()));
+						destinations.put(entry.getKey(), destination);
+						if (entry.getValue() != null) {
+							cloud.addUpdateDestination(entry.getKey(), destination, entry.getValue(), node.getName());
+						} else {
+							cloud.addUploadDestination(entry.getKey(), destination, node.getName());
+						}
+					}
+					if (!uploadList.isEmpty()) {
+						cloud.updateMultiFile(node.getLocalFile());
+					}
+					/* update cache */
+					FileInfo list = null;
+					for (Entry<String, FileInfo> entry: destinations.entrySet()) {
+						if (entry.getValue() != null) {
+							list = cloud.listFolder(entry.getKey(), entry.getValue());
+							for (FileInfo content: list.getContent()) {
+								if (!entry.getValue().getContent().contains(content)) {
+									/* new file uploaded */
+									if (content.getName().equals(node.getLocalFile().getName()) && content.getSize() == node.getLocalFile().length()) {
+										content.setChecksum(node.getChecksum());
+										cache.add(entry.getKey(), content);
+										break;
+									}
+								} else {
+									FileInfo dst = uploadList.get(entry.getKey());
+									if (dst == null) {
+										continue;
+									}
+									/* match ID if present */
+									boolean condId = false;
+									if ((content.getId() == null) && (dst.getId() == null)) {
+										condId = true;
+									} else if ((content.getId() != null) && (dst.getId() != null)) {
+										condId = content.getId().equals(dst.getId());
+									} else {
+										continue;
+									}
+									/* match PATH if present */
+									boolean condPath = false;
+									if ((content.getPath() == null) && (dst.getPath() == null)) {
+										condPath = true;
+									} else if ((content.getPath() != null) && (dst.getPath() != null)) {
+										condPath = content.getPath().equals(dst.getPath());
+									} else {
+										continue;
+									}
+									/* match NAME */
+									boolean condName = (dst != null && content.getName().equals(dst.getName()));
+									if (condId && condPath && condName) {
+										content.setChecksum(node.getChecksum());
+										cache.add(entry.getKey(), content);
+										break;
+									}
+								}
+							}
+						}
+					}
+				} catch (MultiCloudException | OAuth2SettingsException e) {
+					e.printStackTrace();
+					if (aborted) {
+						throw e;
+					}
+				}
+			}
+		}
+		List<SyncData> structure = new ArrayList<>();
+		structure.addAll(folderStructure);
+		if (!node.isRoot()) {
+			structure.add(node);
+		}
+		for (SyncData content: node.getNodes()) {
+			synchronizeStructure(content, structure, syncRoot);
+		}
+	}
+
+	/**
 	 * Termination of the worker.
 	 */
 	public synchronized void terminate() {
@@ -1499,9 +2040,9 @@ public class BackgroundWorker extends Thread {
 	 * Writes local checksum cache to remote destinations.
 	 * @throws MultiCloudException If the operation failed.
 	 * @throws OAuth2SettingsException If the authorization failed.
-	 * @throws InterruptedException If the token refreshing process was interrupted.
+	 * @throws InterruptedException If the process was interrupted.
 	 */
-	private synchronized void writeRemoteCache() throws MultiCloudException, OAuth2SettingsException, InterruptedException {
+	private void writeRemoteCache() throws MultiCloudException, OAuth2SettingsException, InterruptedException {
 		for (String accountName: cache.getRemoteAccounts()) {
 			FileInfo remoteRoot = cache.getRemoteRoot(accountName);
 			FileInfo remote = cache.getRemote(accountName);

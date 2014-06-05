@@ -39,6 +39,8 @@ public class DialogProgressListener extends ProgressListener {
 
 	/** Dialog displayed. */
 	private ProgressDialog dialog;
+	/** If progress should be reported. */
+	private boolean reporting;
 
 	/**
 	 * Empty ctor.
@@ -69,6 +71,7 @@ public class DialogProgressListener extends ProgressListener {
 		progressPanel.setBorder(new EmptyBorder(0, 8, 0, 8));
 		progressPanel.setLayout(new FlowLayout());
 		progressPanel.add(progressBar);
+		reporting = true;
 	}
 
 	/**
@@ -123,7 +126,7 @@ public class DialogProgressListener extends ProgressListener {
 	 */
 	@Override
 	protected void onProgress() {
-		if (progressBar != null) {
+		if (progressBar != null && reporting) {
 			String transferred = Utils.formatSize((getTransferred() / getDivisor()), UnitsFormat.BINARY);
 			String total = Utils.formatSize(getTotalSize(), UnitsFormat.BINARY);
 			int percent = (int) (100.0 * ((double) getTransferred() / getDivisor()) / getTotalSize());
@@ -142,6 +145,14 @@ public class DialogProgressListener extends ProgressListener {
 	 */
 	public void setDialog(ProgressDialog dialog) {
 		this.dialog = dialog;
+	}
+
+	/**
+	 * Sets if the progress should be reported.
+	 * @param reporting If progress should be reported.
+	 */
+	public void setReporting(boolean reporting) {
+		this.reporting = reporting;
 	}
 
 }

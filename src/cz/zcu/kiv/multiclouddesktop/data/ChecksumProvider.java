@@ -423,7 +423,7 @@ public class ChecksumProvider {
 	 * @param folder Remote root folder.
 	 * @param file Remote checksum cache file.
 	 */
-	public void putRemote(String account, FileInfo folder, FileInfo file) {
+	public void putRemote(String account, final FileInfo folder, final FileInfo file) {
 		String id = accounts.get(account);
 		if (id != null) {
 			remote.put(id, file);

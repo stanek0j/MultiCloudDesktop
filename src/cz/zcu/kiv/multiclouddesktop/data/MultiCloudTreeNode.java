@@ -28,6 +28,8 @@ public class MultiCloudTreeNode extends DefaultMutableTreeNode {
 	private final File file;
 	/** Accounts to synchronize to. */
 	private final Map<String, FileInfo> accounts;
+	/** Checksum of the file. */
+	private String checksum;
 
 	/**
 	 * Ctor with local file supplied.
@@ -82,11 +84,27 @@ public class MultiCloudTreeNode extends DefaultMutableTreeNode {
 	}
 
 	/**
+	 * Returns the checksum of the file.
+	 * @return Checksum of the file.
+	 */
+	public String getChecksum() {
+		return checksum;
+	}
+
+	/**
 	 * Returns the name of the node.
 	 * @return Name of the node.
 	 */
 	public String getName() {
 		return name;
+	}
+
+	/**
+	 * Sets the checksum of the file.
+	 * @param checksum Checksum of the file.
+	 */
+	public void setChecksum(String checksum) {
+		this.checksum = checksum;
 	}
 
 }
