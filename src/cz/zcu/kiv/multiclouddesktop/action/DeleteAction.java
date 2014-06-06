@@ -41,6 +41,9 @@ public class DeleteAction extends CloudAction {
 	 */
 	@Override
 	public void actionPerformed(ActionEvent event) {
+		if (!parent.getDataList().hasFocus()) {
+			return;
+		}
 		FileInfo file = parent.getDataList().getSelectedValue();
 		if (file == null) {
 			parent.getMessageCallback().displayError("No item selected.");

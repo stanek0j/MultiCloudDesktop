@@ -1991,12 +1991,12 @@ public class BackgroundWorker extends Thread {
 	 * Preparing task for file transfer between accounts.
 	 * @param srcAccount Source account name.
 	 * @param source Source file to be transferred.
+	 * @param threads Number of download threads.
 	 * @param move If the source file should be moved.
 	 * @param dstAccount Destination account name.
 	 * @param folder Destination folder to upload to.
 	 * @param destination Destination file to be updated.
 	 * @param destinationName New file name.
-	 * @param update If the file contents should be updated.
 	 * @param progressDialog Progress dialog.
 	 * @return If the task was initialized.
 	 */

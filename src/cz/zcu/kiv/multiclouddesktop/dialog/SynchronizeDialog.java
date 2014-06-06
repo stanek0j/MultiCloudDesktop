@@ -91,10 +91,10 @@ public class SynchronizeDialog extends JDialog {
 	 * @param parentFrame Parent frame.
 	 * @param title Dialog title.
 	 * @param syncFolder Synchronization folder.
-	 * @param data Synchronization data.
-	 * @param icnFolder Folder icon.
-	 * @param icnFile File icon.
-	 * @param icnBadFile Bad file icon.
+	 * @param syncData Synchronization data.
+	 * @param folder Folder icon.
+	 * @param file File icon.
+	 * @param badFile Bad file icon.
 	 */
 	public SynchronizeDialog(MultiCloudDesktop parentFrame, String title, File syncFolder, SyncData syncData, ImageIcon folder, ImageIcon file, ImageIcon badFile) {
 		this.parent = parentFrame;

@@ -110,8 +110,8 @@ public class BrowseDialog extends JDialog {
 	 * @param title Dialog title.
 	 * @param original Original folder selected.
 	 * @param selectedAccounts Accounts to be searched.
-	 * @param icnFolder Folder icon.
-	 * @param icnFile File icon.
+	 * @param folder Folder icon.
+	 * @param file File icon.
 	 */
 	public BrowseDialog(MultiCloudDesktop parentFrame, String title, FileInfo original, AccountData[] selectedAccounts, ImageIcon folder, ImageIcon file) {
 		parent = parentFrame;

@@ -1411,7 +1411,7 @@ public class MultiCloudDesktop extends JFrame {
 
 	/**
 	 * Returns the user preferences.
-	 * @return
+	 * @return User preferences.
 	 */
 	public Preferences getPreferences() {
 		return prefs;
