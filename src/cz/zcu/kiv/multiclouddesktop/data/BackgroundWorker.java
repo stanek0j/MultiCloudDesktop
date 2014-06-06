@@ -1,5 +1,6 @@
 package cz.zcu.kiv.multiclouddesktop.data;
 
+import java.awt.Font;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -11,9 +12,11 @@ import java.util.Map.Entry;
 import javax.swing.ButtonGroup;
 import javax.swing.JButton;
 import javax.swing.JComponent;
+import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JProgressBar;
 import javax.swing.JRadioButton;
+import javax.swing.border.EmptyBorder;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 
@@ -1804,13 +1807,26 @@ public class BackgroundWorker extends Thread {
 			/* resolve conflict */
 			if (!conflicted.isEmpty()) {
 				int i = 0;
-				JComponent[] components = new JComponent[conflicted.size() + 3];
+				JComponent[] components = new JComponent[conflicted.size() + 6];
+				components[i++] = new JLabel("Inconsistency between local and remote file detected. Affected file:");
+				StringBuilder sbl = new StringBuilder();
+				sbl.append("[Sync folder]/");
+				for (SyncData folder: folderStructure) {
+					sbl.append(folder.getName() + "/");
+				}
+				sbl.append(node.getName());
+				JLabel lblFile = new JLabel(sbl.toString());
+				lblFile.setBorder(new EmptyBorder(4, 8, 16, 8));
+				lblFile.setFont(new Font(lblFile.getFont().getFontName(), Font.BOLD, lblFile.getFont().getSize()));
+				components[i++] = lblFile;
+				components[i++] = new JLabel("Choose appropriate action:");
 				ButtonGroup buttons = new ButtonGroup();
 				JRadioButton uploadLocal = new JRadioButton("Upload local file.");
 				buttons.add(uploadLocal);
 				components[i++] = uploadLocal;
 				String[] checksum = new String[conflicted.size()];
 				JRadioButton[] downloadRemote = new JRadioButton[conflicted.size()];
+				int j = i;
 				for (Entry<String, List<Entry<String, FileInfo>>> conflict: conflicted.entrySet()) {
 					StringBuilder sb = new StringBuilder();
 					for (Entry<String, FileInfo> entry: conflict.getValue()) {
@@ -1821,8 +1837,8 @@ public class BackgroundWorker extends Thread {
 					}
 					JRadioButton download = new JRadioButton("Download file from: " + sb.toString() + ".");
 					buttons.add(download);
-					downloadRemote[i - 1] = download;
-					checksum[i - 1] = conflict.getKey();
+					downloadRemote[i - j] = download;
+					checksum[i - j] = conflict.getKey();
 					components[i++] = download;
 				}
 				JRadioButton ignoreConflict = new JRadioButton("Ignore conflicted files.");
@@ -1845,10 +1861,10 @@ public class BackgroundWorker extends Thread {
 					} else if (skipFile.isSelected()) {
 						skip = true;
 					} else {
-						for (int j = 0; j < downloadRemote.length; j++) {
-							if (downloadRemote[j].isSelected()) {
-								node.setChecksum(checksum[j]);
-								List<Entry<String, FileInfo>> list = conflicted.get(checksum[j]);
+						for (int k = 0; k < downloadRemote.length; k++) {
+							if (downloadRemote[k].isSelected()) {
+								node.setChecksum(checksum[k]);
+								List<Entry<String, FileInfo>> list = conflicted.get(checksum[k]);
 								for (Entry<String, FileInfo> entry: list) {
 									downloadList.put(entry.getKey(), entry.getValue());
 								}
