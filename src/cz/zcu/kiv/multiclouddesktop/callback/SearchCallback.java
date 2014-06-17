@@ -3,6 +3,7 @@ package cz.zcu.kiv.multiclouddesktop.callback;
 import java.util.List;
 
 import javax.swing.DefaultListModel;
+import javax.swing.SwingUtilities;
 
 import cz.zcu.kiv.multicloud.json.FileInfo;
 import cz.zcu.kiv.multiclouddesktop.data.BackgroundTask;
@@ -38,37 +39,47 @@ public class SearchCallback implements BackgroundCallback<List<FileInfo>> {
 	 * {@inheritDoc}
 	 */
 	@Override
-	public void onFinish(BackgroundTask task, String accountName, List<FileInfo> result) {
-		DefaultListModel<FileInfo> model = (DefaultListModel<FileInfo>) dialog.getList().getModel();
-		model.clear();
-		if (result == null) {
-			dialog.finishSearch(null);
-		} else {
-			if (result.isEmpty()) {
-				dialog.finishSearch("No results.");
-			} else {
-				for (FileInfo f: result) {
-					if (match != null) {
-						if (match.getChecksum() != null) {
-							if (match.getChecksum().equals(f.getChecksum())) {
-								model.addElement(f);
-							}
-						} else {
-							if (match.getSize() == f.getSize() && match.getFileType() == f.getFileType()) {
+	public void onFinish(BackgroundTask task, String accountName, final List<FileInfo> result) {
+		SwingUtilities.invokeLater(new Runnable() {
+			/**
+			 * {@inheritDoc}
+			 */
+			@Override
+			public void run() {
+				DefaultListModel<FileInfo> model = (DefaultListModel<FileInfo>) dialog.getList().getModel();
+				model.clear();
+				if (result == null) {
+					dialog.finishSearch(null);
+				} else {
+					if (result.isEmpty()) {
+						dialog.finishSearch("No results.");
+					} else {
+						for (FileInfo f: result) {
+							if (match != null) {
+								if (match.getChecksum() != null) {
+									if (match.getChecksum().equals(f.getChecksum())) {
+										model.addElement(f);
+									} else if (f.getChecksum() == null && match.getSize() == f.getSize() && match.getFileType() == f.getFileType()) {
+										model.addElement(f);
+									}
+								} else {
+									if (match.getSize() == f.getSize() && match.getFileType() == f.getFileType()) {
+										model.addElement(f);
+									}
+								}
+							} else {
 								model.addElement(f);
 							}
 						}
-					} else {
-						model.addElement(f);
+						if (model.isEmpty()) {
+							dialog.finishSearch("No results.");
+						} else {
+							dialog.finishSearch("Found " + model.getSize() + " matches.");
+						}
 					}
 				}
-				if (model.isEmpty()) {
-					dialog.finishSearch("No results.");
-				} else {
-					dialog.finishSearch("Found " + model.getSize() + " matches.");
-				}
 			}
-		}
+		});
 	}
 
 }

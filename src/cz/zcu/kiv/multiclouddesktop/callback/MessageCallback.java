@@ -5,6 +5,7 @@ import java.awt.Frame;
 
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
+import javax.swing.SwingUtilities;
 
 import cz.zcu.kiv.multiclouddesktop.data.BackgroundTask;
 
@@ -42,21 +43,37 @@ public class MessageCallback implements BackgroundCallback<Boolean> {
 	 * Displays an error message in the target label.
 	 * @param message Message to be displayed.
 	 */
-	public synchronized void displayError(String message) {
-		status.setForeground(Color.RED);
-		status.setText("Error: " + message);
-		if (showErrorDialog) {
-			JOptionPane.showMessageDialog(parent, message, "Error", JOptionPane.ERROR_MESSAGE);
-		}
+	public synchronized void displayError(final String message) {
+		SwingUtilities.invokeLater(new Runnable() {
+			/**
+			 * {@inheritDoc}
+			 */
+			@Override
+			public void run() {
+				status.setForeground(Color.RED);
+				status.setText("Error: " + message);
+				if (showErrorDialog) {
+					JOptionPane.showMessageDialog(parent, message, "Error", JOptionPane.ERROR_MESSAGE);
+				}
+			}
+		});
 	}
 
 	/**
 	 * Displays a normal message in the target label.
 	 * @param message Message to be displayed.
 	 */
-	public synchronized void displayMessage(String message) {
-		status.setForeground(Color.BLACK);
-		status.setText(message);
+	public synchronized void displayMessage(final String message) {
+		SwingUtilities.invokeLater(new Runnable() {
+			/**
+			 * {@inheritDoc}
+			 */
+			@Override
+			public void run() {
+				status.setForeground(Color.BLACK);
+				status.setText(message);
+			}
+		});
 	}
 
 	/**

@@ -10,6 +10,7 @@ import javax.swing.JButton;
 import javax.swing.JComponent;
 import javax.swing.JDialog;
 import javax.swing.JPanel;
+import javax.swing.SwingUtilities;
 import javax.swing.border.EmptyBorder;
 
 /**
@@ -73,7 +74,15 @@ public class ProgressDialog extends JDialog {
 	 */
 	public void closeDialog() {
 		if (!prevent) {
-			setVisible(false);
+			SwingUtilities.invokeLater(new Runnable() {
+				/**
+				 * {@inheritDoc}
+				 */
+				@Override
+				public void run() {
+					setVisible(false);
+				}
+			});
 		}
 	}
 

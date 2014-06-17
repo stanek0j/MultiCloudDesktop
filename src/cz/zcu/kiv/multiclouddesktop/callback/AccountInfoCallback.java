@@ -9,6 +9,7 @@ import javax.swing.JComponent;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
+import javax.swing.SwingUtilities;
 
 import cz.zcu.kiv.multicloud.json.AccountInfo;
 import cz.zcu.kiv.multiclouddesktop.data.BackgroundTask;
@@ -39,26 +40,34 @@ public class AccountInfoCallback implements BackgroundCallback<AccountInfo> {
 	 * {@inheritDoc}
 	 */
 	@Override
-	public void onFinish(BackgroundTask task, String accountName, AccountInfo result) {
-		JPanel namePanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
-		JLabel lblName = new JLabel("User name:");
-		lblName.setPreferredSize(new Dimension(60, lblName.getPreferredSize().height));
-		JLabel lblNameTxt = new JLabel(result.getName());
-		lblNameTxt.setFont(new Font(lblNameTxt.getFont().getFontName(), Font.BOLD, lblNameTxt.getFont().getSize()));
-		namePanel.add(lblName);
-		namePanel.add(lblNameTxt);
-		JPanel idPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
-		JLabel lblId = new JLabel("User ID:");
-		lblId.setPreferredSize(new Dimension(60, lblId.getPreferredSize().height));
-		JLabel lblIdTxt = new JLabel(result.getId());
-		lblIdTxt.setFont(new Font(lblIdTxt.getFont().getFontName(), Font.BOLD, lblIdTxt.getFont().getSize()));
-		idPanel.add(lblId);
-		idPanel.add(lblIdTxt);
-		JComponent[] content = new JComponent[] {
-				namePanel,
-				idPanel
-		};
-		JOptionPane.showMessageDialog(parent, content, "Account information", JOptionPane.PLAIN_MESSAGE);
+	public void onFinish(BackgroundTask task, String accountName, final AccountInfo result) {
+		SwingUtilities.invokeLater(new Runnable() {
+			/**
+			 * {@inheritDoc}
+			 */
+			@Override
+			public void run() {
+				JPanel namePanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
+				JLabel lblName = new JLabel("User name:");
+				lblName.setPreferredSize(new Dimension(60, lblName.getPreferredSize().height));
+				JLabel lblNameTxt = new JLabel(result.getName());
+				lblNameTxt.setFont(new Font(lblNameTxt.getFont().getFontName(), Font.BOLD, lblNameTxt.getFont().getSize()));
+				namePanel.add(lblName);
+				namePanel.add(lblNameTxt);
+				JPanel idPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
+				JLabel lblId = new JLabel("User ID:");
+				lblId.setPreferredSize(new Dimension(60, lblId.getPreferredSize().height));
+				JLabel lblIdTxt = new JLabel(result.getId());
+				lblIdTxt.setFont(new Font(lblIdTxt.getFont().getFontName(), Font.BOLD, lblIdTxt.getFont().getSize()));
+				idPanel.add(lblId);
+				idPanel.add(lblIdTxt);
+				JComponent[] content = new JComponent[] {
+						namePanel,
+						idPanel
+				};
+				JOptionPane.showMessageDialog(parent, content, "Account information", JOptionPane.PLAIN_MESSAGE);
+			}
+		});
 	}
 
 }

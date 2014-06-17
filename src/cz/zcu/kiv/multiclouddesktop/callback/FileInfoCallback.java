@@ -2,6 +2,7 @@ package cz.zcu.kiv.multiclouddesktop.callback;
 
 import javax.swing.DefaultListModel;
 import javax.swing.JList;
+import javax.swing.SwingUtilities;
 
 import cz.zcu.kiv.multicloud.filesystem.FileType;
 import cz.zcu.kiv.multicloud.json.FileInfo;
@@ -44,41 +45,57 @@ public class FileInfoCallback implements BackgroundCallback<FileInfo> {
 	 * {@inheritDoc}
 	 */
 	@Override
-	public void onFinish(BackgroundTask task, String accountName, FileInfo result) {
+	public void onFinish(BackgroundTask task, final String accountName, final FileInfo result) {
 		if (result == null) {
 			return;
 		}
 		/* update the account list */
-		for (int i = 0; i < accountList.getModel().getSize(); i++) {
-			AccountData account = accountList.getModel().getElementAt(i);
-			if (account.getName().equals(accountName)) {
-				account.setListed(true);
-			} else {
-				account.setListed(false);
-			}
-		}
-		accountList.revalidate();
-		accountList.repaint();
-		/* update the data list */
-		DefaultListModel<FileInfo> model = (DefaultListModel<FileInfo>) dataList.getModel();
-		model.clear();
-		if (!result.isRoot()) {
-			model.addElement(parent.getParentFolder());
-		}
-		/* loop twice - first for folders, then for files */
-		for (FileInfo f: result.getContent()) {
-			if (f.getFileType() == FileType.FOLDER) {
-				model.addElement(f);
-			}
-		}
-		for (FileInfo f: result.getContent()) {
-			if (f.getFileType() == FileType.FILE) {
-				if (parent.getPreferences().isHideMetadata() && f.getName().equals(ChecksumProvider.CHECKSUM_FILE)) {
-					continue;
+		SwingUtilities.invokeLater(new Runnable() {
+			/**
+			 * {@inheritDoc}
+			 */
+			@Override
+			public void run() {
+				for (int i = 0; i < accountList.getModel().getSize(); i++) {
+					AccountData account = accountList.getModel().getElementAt(i);
+					if (account.getName().equals(accountName)) {
+						account.setListed(true);
+					} else {
+						account.setListed(false);
+					}
 				}
-				model.addElement(f);
+				accountList.revalidate();
+				accountList.repaint();
 			}
-		}
+		});
+		/* update the data list */
+		SwingUtilities.invokeLater(new Runnable() {
+			/**
+			 * {@inheritDoc}
+			 */
+			@Override
+			public void run() {
+				DefaultListModel<FileInfo> model = (DefaultListModel<FileInfo>) dataList.getModel();
+				model.clear();
+				if (!result.isRoot()) {
+					model.addElement(parent.getParentFolder());
+				}
+				/* loop twice - first for folders, then for files */
+				for (FileInfo f: result.getContent()) {
+					if (f.getFileType() == FileType.FOLDER) {
+						model.addElement(f);
+					}
+				}
+				for (FileInfo f: result.getContent()) {
+					if (f.getFileType() == FileType.FILE) {
+						if (parent.getPreferences().isHideMetadata() && f.getName().equals(ChecksumProvider.CHECKSUM_FILE)) {
+							continue;
+						}
+						model.addElement(f);
+					}
+				}
+			}
+		});
 	}
 
 }

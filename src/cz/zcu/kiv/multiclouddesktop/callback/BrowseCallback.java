@@ -2,6 +2,7 @@ package cz.zcu.kiv.multiclouddesktop.callback;
 
 import javax.swing.DefaultListModel;
 import javax.swing.JList;
+import javax.swing.SwingUtilities;
 
 import cz.zcu.kiv.multicloud.filesystem.FileType;
 import cz.zcu.kiv.multicloud.json.FileInfo;
@@ -39,33 +40,41 @@ public class BrowseCallback implements BackgroundCallback<FileInfo> {
 	 * {@inheritDoc}
 	 */
 	@Override
-	public void onFinish(BackgroundTask task, String accountName, FileInfo result) {
+	public void onFinish(BackgroundTask task, String accountName, final FileInfo result) {
 		/* update the data list */
-		if (result == null) {
-			parent.finishBrowse(null);
-		} else {
-			parent.setCurrentFolder(result);
-			DefaultListModel<FileInfo> model = (DefaultListModel<FileInfo>) dataList.getModel();
-			model.clear();
-			if (!result.isRoot()) {
-				model.addElement(parent.getParentFolder());
-			}
-			/* loop twice - first for folders, then for files */
-			for (FileInfo f: result.getContent()) {
-				if (f.getFileType() == FileType.FOLDER) {
-					model.addElement(f);
-				}
-			}
-			for (FileInfo f: result.getContent()) {
-				if (f.getFileType() == FileType.FILE) {
-					if (parent.getParentFrame().getPreferences().isHideMetadata() && f.getName().equals(ChecksumProvider.CHECKSUM_FILE)) {
-						continue;
+		SwingUtilities.invokeLater(new Runnable() {
+			/**
+			 * {@inheritDoc}
+			 */
+			@Override
+			public void run() {
+				if (result == null) {
+					parent.finishBrowse(null);
+				} else {
+					parent.setCurrentFolder(result);
+					DefaultListModel<FileInfo> model = (DefaultListModel<FileInfo>) dataList.getModel();
+					model.clear();
+					if (!result.isRoot()) {
+						model.addElement(parent.getParentFolder());
 					}
-					model.addElement(f);
+					/* loop twice - first for folders, then for files */
+					for (FileInfo f: result.getContent()) {
+						if (f.getFileType() == FileType.FOLDER) {
+							model.addElement(f);
+						}
+					}
+					for (FileInfo f: result.getContent()) {
+						if (f.getFileType() == FileType.FILE) {
+							if (parent.getParentFrame().getPreferences().isHideMetadata() && f.getName().equals(ChecksumProvider.CHECKSUM_FILE)) {
+								continue;
+							}
+							model.addElement(f);
+						}
+					}
+					parent.finishBrowse("Folder listed.");
 				}
 			}
-			parent.finishBrowse("Folder listed.");
-		}
+		});
 	}
 
 }

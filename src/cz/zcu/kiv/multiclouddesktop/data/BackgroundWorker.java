@@ -16,6 +16,7 @@ import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JProgressBar;
 import javax.swing.JRadioButton;
+import javax.swing.SwingUtilities;
 import javax.swing.border.EmptyBorder;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -194,8 +195,16 @@ public class BackgroundWorker extends Thread {
 	 * Enabling user controls on the parent frame.
 	 */
 	private synchronized void beginOperation() {
-		progressBar.setIndeterminate(true);
-		btnAbort.setEnabled(true);
+		SwingUtilities.invokeLater(new Runnable() {
+			/**
+			 * {@inheritDoc}
+			 */
+			@Override
+			public void run() {
+				progressBar.setIndeterminate(true);
+				btnAbort.setEnabled(true);
+			}
+		});
 	}
 
 	/**
@@ -397,8 +406,16 @@ public class BackgroundWorker extends Thread {
 	 * Disabling the user controls.
 	 */
 	private synchronized void finishOperation() {
-		progressBar.setIndeterminate(false);
-		btnAbort.setEnabled(false);
+		SwingUtilities.invokeLater(new Runnable() {
+			/**
+			 * {@inheritDoc}
+			 */
+			@Override
+			public void run() {
+				progressBar.setIndeterminate(false);
+				btnAbort.setEnabled(false);
+			}
+		});
 	}
 
 	/**
@@ -1176,11 +1193,11 @@ public class BackgroundWorker extends Thread {
 					if (messageCallback != null) {
 						messageCallback.onFinish(task, e.getMessage(), true);
 					}
-					synchronized (this) {
-						if (dialog != null) {
-							dialog.closeDialog();
-							dialog = null;
-						}
+				}
+				synchronized (this) {
+					if (dialog != null) {
+						dialog.closeDialog();
+						dialog = null;
 					}
 				}
 				break;
@@ -1272,11 +1289,11 @@ public class BackgroundWorker extends Thread {
 					if (messageCallback != null) {
 						messageCallback.onFinish(task, e.getMessage(), true);
 					}
-					synchronized (this) {
-						if (dialog != null) {
-							dialog.closeDialog();
-							dialog = null;
-						}
+				}
+				synchronized (this) {
+					if (dialog != null) {
+						dialog.closeDialog();
+						dialog = null;
 					}
 				}
 				break;
@@ -1291,6 +1308,12 @@ public class BackgroundWorker extends Thread {
 				} catch (MultiCloudException | OAuth2SettingsException | InterruptedException e) {
 					if (messageCallback != null) {
 						messageCallback.onFinish(task, e.getMessage(), true);
+					}
+				}
+				synchronized (this) {
+					if (dialog != null) {
+						dialog.closeDialog();
+						dialog = null;
 					}
 				}
 				break;
@@ -1310,6 +1333,12 @@ public class BackgroundWorker extends Thread {
 				} catch (MultiCloudException | OAuth2SettingsException | InterruptedException e) {
 					if (messageCallback != null) {
 						messageCallback.onFinish(task, e.getMessage(), true);
+					}
+				}
+				synchronized (this) {
+					if (dialog != null) {
+						dialog.closeDialog();
+						dialog = null;
 					}
 				}
 				break;
@@ -1605,6 +1634,10 @@ public class BackgroundWorker extends Thread {
 						for (FileInfo f: result) {
 							/* find the path of the file */
 							if (f.getPath() == null) {
+								if (f.getParents().isEmpty()) {
+									f.setPath("(?)/" + f.getName());
+									continue;
+								}
 								StringBuilder sb = new StringBuilder("/" + f.getName());
 								ParentInfo parent = f.getParents().get(0);
 								String currentId = f.getId();
@@ -1841,7 +1874,7 @@ public class BackgroundWorker extends Thread {
 					checksum[i - j] = conflict.getKey();
 					components[i++] = download;
 				}
-				JRadioButton ignoreConflict = new JRadioButton("Ignore conflicted files.");
+				JRadioButton ignoreConflict = new JRadioButton("Ignore remote conflicted files.");
 				buttons.add(ignoreConflict);
 				components[i++] = ignoreConflict;
 				JRadioButton skipFile = new JRadioButton("Skip synchronization of this file.");
