@@ -19,7 +19,6 @@ import javax.swing.JTextField;
 
 import cz.zcu.kiv.multicloud.oauth2.AuthorizationCallback;
 import cz.zcu.kiv.multicloud.oauth2.AuthorizationRequest;
-import cz.zcu.kiv.multiclouddesktop.dialog.AuthorizeDialog;
 
 /**
  * cz.zcu.kiv.multiclouddesktop/BrowserCallback.java			<br /><br />
@@ -32,8 +31,6 @@ import cz.zcu.kiv.multiclouddesktop.dialog.AuthorizeDialog;
  */
 public class BrowserCallback implements AuthorizationCallback {
 
-	/** Authorization dialog. */
-	private final AuthorizeDialog dialog;
 	/** Parent frame to be blocked by the message dialog. */
 	private final Frame parent;
 
@@ -41,8 +38,7 @@ public class BrowserCallback implements AuthorizationCallback {
 	 * Ctor with authorization dialog.
 	 * @param dialog Authorization dialog.
 	 */
-	public BrowserCallback(AuthorizeDialog dialog, Frame parent) {
-		this.dialog = dialog;
+	public BrowserCallback(Frame parent) {
 		this.parent = parent;
 	}
 
@@ -53,7 +49,6 @@ public class BrowserCallback implements AuthorizationCallback {
 	public void onAuthorizationRequest(AuthorizationRequest request) {
 		Desktop desktop = Desktop.getDesktop();
 		try {
-			dialog.setAlwaysOnTop(false);
 			desktop.browse(new URI(request.getRequestUri()));
 		} catch (IOException | URISyntaxException e) {
 			/* if opening the browser failed, try any other option */

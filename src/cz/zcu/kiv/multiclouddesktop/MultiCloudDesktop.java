@@ -960,7 +960,7 @@ public class MultiCloudDesktop extends JFrame {
 			@Override
 			public void run() {
 				try {
-					cloud.authorizeAccount(account.getName(), new BrowserCallback(dialog, window));
+					cloud.authorizeAccount(account.getName(), new BrowserCallback(window));
 				} catch (MultiCloudException | OAuth2SettingsException | InterruptedException e) {
 					dialog.setFailed(true);
 					messageCallback.displayError(e.getMessage());
