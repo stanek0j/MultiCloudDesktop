@@ -4,6 +4,7 @@ import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.Font;
 import java.awt.event.ActionEvent;
+import java.text.SimpleDateFormat;
 
 import javax.swing.JComponent;
 import javax.swing.JLabel;
@@ -32,6 +33,8 @@ public class PropertiesAction extends CloudAction {
 
 	/** Name of the action. */
 	public static final String ACT_NAME = "Properties";
+	/** Date format. */
+	public static final String DATE_FORMAT = "yyyy-MM-dd HH:mm:ss";
 
 	/**
 	 * Ctor with necessary parameters.
@@ -51,6 +54,7 @@ public class PropertiesAction extends CloudAction {
 		if (f == null) {
 			JOptionPane.showMessageDialog(parent, "No item selected.", ACT_NAME, JOptionPane.ERROR_MESSAGE);
 		} else {
+			SimpleDateFormat dt = new SimpleDateFormat(DATE_FORMAT);
 			JPanel namePanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
 			JLabel lblName = new JLabel("Name:");
 			lblName.setPreferredSize(new Dimension(60, lblName.getPreferredSize().height));
@@ -93,6 +97,26 @@ public class PropertiesAction extends CloudAction {
 			lblSizeTxt.setFont(boldFont);
 			sizePanel.add(lblSize);
 			sizePanel.add(lblSizeTxt);
+			JPanel createdPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
+			JLabel lblCreated = new JLabel("Created:");
+			lblCreated.setPreferredSize(new Dimension(60, lblCreated.getPreferredSize().height));
+			JLabel lblCreatedTxt = new JLabel("-");
+			if (f.getCreated() != null) {
+				lblCreatedTxt.setText(dt.format(f.getCreated()));
+			}
+			lblCreatedTxt.setFont(boldFont);
+			createdPanel.add(lblCreated);
+			createdPanel.add(lblCreatedTxt);
+			JPanel modifiedPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
+			JLabel lblModified = new JLabel("Modified:");
+			lblModified.setPreferredSize(new Dimension(60, lblModified.getPreferredSize().height));
+			JLabel lblModifiedTxt = new JLabel("-");
+			if (f.getModified() != null) {
+				lblModifiedTxt.setText(dt.format(f.getModified()));
+			}
+			lblModifiedTxt.setFont(boldFont);
+			modifiedPanel.add(lblModified);
+			modifiedPanel.add(lblModifiedTxt);
 			JPanel checksumPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
 			JLabel lblChecksum = new JLabel("Checksum:");
 			lblChecksum.setPreferredSize(new Dimension(60, lblChecksum.getPreferredSize().height));
@@ -108,6 +132,8 @@ public class PropertiesAction extends CloudAction {
 					idPanel,
 					typePanel,
 					sizePanel,
+					createdPanel,
+					modifiedPanel,
 					checksumPanel
 			};
 			JOptionPane.showMessageDialog(parent, content, ACT_NAME, JOptionPane.PLAIN_MESSAGE);
