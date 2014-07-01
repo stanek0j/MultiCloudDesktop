@@ -644,6 +644,9 @@ public class BackgroundWorker extends Thread {
 						/* ignore file exceptions */
 					}
 				}
+				if (metadata == null) {
+					cache.putRemote(accountName, cache.getRemoteRoot(accountName), null);
+				}
 			}
 		}
 	}
@@ -2105,12 +2108,12 @@ public class BackgroundWorker extends Thread {
 					}
 				} else {
 					/* write new metadata */
-					cloud.uploadFile(account, remoteRoot, ChecksumProvider.CHECKSUM_FILE, true, new File(ChecksumProvider.CHECKSUM_FILE));
-					FileInfo r = cloud.listFolder(account, remoteRoot);
+					cloud.uploadFile(accountName, remoteRoot, ChecksumProvider.CHECKSUM_FILE, true, new File(ChecksumProvider.CHECKSUM_FILE));
+					FileInfo r = cloud.listFolder(accountName, remoteRoot);
 					if (r != null) {
 						for (FileInfo f: r.getContent()) {
 							if (f.getName().equals(ChecksumProvider.CHECKSUM_FILE)) {
-								cache.putRemote(account, remoteRoot, f);
+								cache.putRemote(accountName, remoteRoot, f);
 								break;
 							}
 						}
