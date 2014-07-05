@@ -682,7 +682,9 @@ public class BackgroundWorker extends Thread {
 				}
 			}
 		}
-	}	/**
+	}
+
+	/**
 	 * Preparing task for refreshing account data.
 	 * @param accountName Account name.
 	 * @param accountNames Account names.
