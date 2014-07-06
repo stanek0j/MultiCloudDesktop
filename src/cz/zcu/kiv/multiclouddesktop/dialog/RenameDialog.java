@@ -22,6 +22,15 @@ import javax.swing.border.EmptyBorder;
 import cz.zcu.kiv.multicloud.filesystem.FileType;
 import cz.zcu.kiv.multicloud.json.FileInfo;
 
+/**
+ * cz.zcu.kiv.multiclouddesktop.dialog/RenameDialog.java			<br /><br />
+ *
+ * Dialog for renaming a folder or file.
+ *
+ * @author Jaromír Staněk
+ * @version 1.0
+ *
+ */
 public class RenameDialog extends JDialog {
 
 	/** Serialization constant. */
